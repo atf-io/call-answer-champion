@@ -1,25 +1,85 @@
+import { useState } from "react";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, FileText, Upload, Link, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, FileText, Upload, Link, Search, Loader2, Trash2, ExternalLink, Globe, X, ChevronDown, ChevronUp } from "lucide-react";
+import { useKnowledgeBase, KnowledgeBaseEntry } from "@/hooks/useKnowledgeBase";
+import { formatDistanceToNow } from "date-fns";
 
 const KnowledgeBase = () => {
+  const { entries, isLoading, scrapeUrl, isScraping, addText, isAddingText, deleteEntry, toggleActive } = useKnowledgeBase();
+  
+  const [urlDialogOpen, setUrlDialogOpen] = useState(false);
+  const [textDialogOpen, setTextDialogOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [textTitle, setTextTitle] = useState("");
+  const [textContent, setTextContent] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+
+  const handleAddUrl = () => {
+    if (!url.trim()) return;
+    scrapeUrl({ url: url.trim() }, {
+      onSuccess: () => {
+        setUrl("");
+        setUrlDialogOpen(false);
+      }
+    });
+  };
+
+  const handleAddText = () => {
+    if (!textTitle.trim() || !textContent.trim()) return;
+    addText({ title: textTitle.trim(), content: textContent.trim() }, {
+      onSuccess: () => {
+        setTextTitle("");
+        setTextContent("");
+        setTextDialogOpen(false);
+      }
+    });
+  };
+
+  const filteredEntries = entries.filter(entry => 
+    entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getSourceIcon = (type: string) => {
+    switch (type) {
+      case 'url': return <Globe className="w-4 h-4" />;
+      case 'file': return <Upload className="w-4 h-4" />;
+      case 'text': return <FileText className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
   return (
     <AgentLayout
       title="Knowledge Base"
-      description="Add documents and information for your agents to reference"
+      description="Add documents and information for your agents to reference during calls and SMS conversations"
     >
       <div className="space-y-6">
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search knowledge base..." className="pl-10" />
+          <Input 
+            placeholder="Search knowledge base..." 
+            className="pl-10" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         {/* Upload Options */}
         <div className="grid md:grid-cols-3 gap-6">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed"
+            onClick={() => alert('File upload coming soon')}
+          >
             <CardContent className="flex flex-col items-center justify-center py-8">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Upload className="w-6 h-6 text-primary" />
@@ -31,7 +91,10 @@ const KnowledgeBase = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed"
+            onClick={() => setUrlDialogOpen(true)}
+          >
             <CardContent className="flex flex-col items-center justify-center py-8">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Link className="w-6 h-6 text-primary" />
@@ -43,7 +106,10 @@ const KnowledgeBase = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer group border-dashed"
+            onClick={() => setTextDialogOpen(true)}
+          >
             <CardContent className="flex flex-col items-center justify-center py-8">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <FileText className="w-6 h-6 text-primary" />
@@ -56,22 +122,244 @@ const KnowledgeBase = () => {
           </Card>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Empty State */}
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <FileText className="w-16 h-16 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No documents yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-4">
-              Add documents, FAQs, or website content to help your agents provide accurate responses
-            </p>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Document
-            </Button>
-          </CardContent>
-        </Card>
+        {!isLoading && entries.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <FileText className="w-16 h-16 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No documents yet</h3>
+              <p className="text-muted-foreground text-center max-w-md mb-4">
+                Add documents, FAQs, or website content to help your agents provide accurate responses
+              </p>
+              <Button onClick={() => setUrlDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Document
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Entries List */}
+        {!isLoading && filteredEntries.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{filteredEntries.length} Knowledge Base Entries</h3>
+            {filteredEntries.map((entry) => (
+              <KnowledgeBaseEntryCard 
+                key={entry.id} 
+                entry={entry}
+                isExpanded={expandedEntryId === entry.id}
+                onToggleExpand={() => setExpandedEntryId(expandedEntryId === entry.id ? null : entry.id)}
+                onDelete={() => deleteEntry(entry.id)}
+                onToggleActive={(active) => toggleActive({ entryId: entry.id, isActive: active })}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Add URL Dialog */}
+      <Dialog open={urlDialogOpen} onOpenChange={setUrlDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Website URL</DialogTitle>
+            <DialogDescription>
+              Enter a URL to scrape and add its content to your knowledge base. The content will be available for your AI agents to reference.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="url">Website URL</Label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="url"
+                  placeholder="https://example.com/page"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="pl-10"
+                  disabled={isScraping}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUrlDialogOpen(false)} disabled={isScraping}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddUrl} disabled={isScraping || !url.trim()}>
+              {isScraping ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Scraping...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add URL
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Text Dialog */}
+      <Dialog open={textDialogOpen} onOpenChange={setTextDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Write Content</DialogTitle>
+            <DialogDescription>
+              Add custom content like FAQs, policies, or product information for your agents to reference.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                placeholder="e.g., Pricing Information, FAQ, Return Policy"
+                value={textTitle}
+                onChange={(e) => setTextTitle(e.target.value)}
+                disabled={isAddingText}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                placeholder="Enter the content your agents should know about..."
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                rows={10}
+                disabled={isAddingText}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTextDialogOpen(false)} disabled={isAddingText}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddText} disabled={isAddingText || !textTitle.trim() || !textContent.trim()}>
+              {isAddingText ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Content
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AgentLayout>
+  );
+};
+
+interface KnowledgeBaseEntryCardProps {
+  entry: KnowledgeBaseEntry;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onDelete: () => void;
+  onToggleActive: (active: boolean) => void;
+}
+
+const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, onToggleActive }: KnowledgeBaseEntryCardProps) => {
+  const getSourceIcon = (type: string) => {
+    switch (type) {
+      case 'url': return <Globe className="w-4 h-4" />;
+      case 'file': return <Upload className="w-4 h-4" />;
+      case 'text': return <FileText className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  const truncatedContent = entry.content.length > 200 
+    ? entry.content.substring(0, 200) + '...' 
+    : entry.content;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              {getSourceIcon(entry.source_type)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base truncate">{entry.title}</CardTitle>
+              <CardDescription className="flex items-center gap-2 mt-1">
+                <span className="capitalize">{entry.source_type}</span>
+                <span>•</span>
+                <span>{formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}</span>
+                {entry.source_url && (
+                  <>
+                    <span>•</span>
+                    <a 
+                      href={entry.source_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View source <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </>
+                )}
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Switch 
+              checked={entry.is_active} 
+              onCheckedChange={onToggleActive}
+              aria-label="Toggle active"
+            />
+            <Button variant="ghost" size="icon" onClick={onDelete}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {entry.summary && (
+          <p className="text-sm text-muted-foreground mb-3">
+            <strong>Summary:</strong> {entry.summary}
+          </p>
+        )}
+        <div className="bg-muted/50 rounded-lg p-3">
+          <p className="text-sm whitespace-pre-wrap">
+            {isExpanded ? entry.content : truncatedContent}
+          </p>
+          {entry.content.length > 200 && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onToggleExpand}
+              className="mt-2 h-auto p-0 text-primary"
+            >
+              {isExpanded ? (
+                <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
+              ) : (
+                <>Show more <ChevronDown className="w-4 h-4 ml-1" /></>
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
