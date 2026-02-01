@@ -38,7 +38,6 @@ const navigation: NavGroup[] = [
     label: "Deploy",
     items: [
       { name: "Phone Numbers", href: "/dashboard/agents/phone-numbers", icon: Phone },
-      { name: "Batch Call", href: "/dashboard/agents/batch-call", icon: PhoneCall },
     ],
   },
   {
