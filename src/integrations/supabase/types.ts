@@ -154,31 +154,67 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          business_address: string | null
+          business_colors: Json | null
+          business_description: string | null
+          business_faqs: Json | null
+          business_logo_url: string | null
+          business_name: string | null
+          business_phone: string | null
+          business_services: string[] | null
+          business_social_links: Json | null
+          business_team_info: string | null
+          business_website: string | null
           company_name: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          business_address?: string | null
+          business_colors?: Json | null
+          business_description?: string | null
+          business_faqs?: Json | null
+          business_logo_url?: string | null
+          business_name?: string | null
+          business_phone?: string | null
+          business_services?: string[] | null
+          business_social_links?: Json | null
+          business_team_info?: string | null
+          business_website?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          business_address?: string | null
+          business_colors?: Json | null
+          business_description?: string | null
+          business_faqs?: Json | null
+          business_logo_url?: string | null
+          business_name?: string | null
+          business_phone?: string | null
+          business_services?: string[] | null
+          business_social_links?: Json | null
+          business_team_info?: string | null
+          business_website?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           updated_at?: string
           user_id?: string
         }

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import Reviews from "./pages/Reviews";
 import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/agents" element={<Agents />} />
             <Route path="/dashboard/reviews" element={<Reviews />} />
