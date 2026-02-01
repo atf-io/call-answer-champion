@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Phone, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -23,9 +24,24 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
+    const checkOnboardingStatus = async () => {
+      if (user) {
+        // Check if user has completed onboarding
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile?.onboarding_completed) {
+          navigate("/dashboard");
+        } else {
+          navigate("/onboarding");
+        }
+      }
+    };
+
+    checkOnboardingStatus();
   }, [user, navigate]);
 
   const validateForm = () => {
@@ -82,7 +98,7 @@ const Auth = () => {
             });
           }
         } else {
-          navigate("/dashboard");
+          // Login successful - onboarding check will happen in useEffect
         }
       } else {
         const { error } = await signUp(email, password);
