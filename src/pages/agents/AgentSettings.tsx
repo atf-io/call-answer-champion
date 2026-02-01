@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Key, Globe, Shield, Webhook, Zap, Check, Loader2, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Key, Globe, Shield, Webhook, Zap, Check, Loader2, ExternalLink, MapPin, Megaphone, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const AgentSettings = () => {
@@ -14,6 +15,56 @@ const AgentSettings = () => {
   const [isTestingZapier, setIsTestingZapier] = useState(false);
   const [zapierConnected, setZapierConnected] = useState(false);
 
+  // Google My Business state
+  const [gmbConnected, setGmbConnected] = useState(false);
+  const [gmbLoading, setGmbLoading] = useState(false);
+  const [gmbBusinessName, setGmbBusinessName] = useState("");
+  const [gmbPlaceId, setGmbPlaceId] = useState("");
+
+  // Google LSA state
+  const [lsaConnected, setLsaConnected] = useState(false);
+  const [lsaLoading, setLsaLoading] = useState(false);
+  const [lsaAccountId, setLsaAccountId] = useState("");
+
+  const handleConnectGMB = async () => {
+    if (!gmbPlaceId.trim()) {
+      toast.error("Please enter your Google Place ID");
+      return;
+    }
+    setGmbLoading(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setGmbConnected(true);
+    setGmbBusinessName("Your Business Name");
+    setGmbLoading(false);
+    toast.success("Google My Business connected successfully!");
+  };
+
+  const handleDisconnectGMB = () => {
+    setGmbConnected(false);
+    setGmbBusinessName("");
+    setGmbPlaceId("");
+    toast.success("Google My Business disconnected");
+  };
+
+  const handleConnectLSA = async () => {
+    if (!lsaAccountId.trim()) {
+      toast.error("Please enter your LSA Account ID");
+      return;
+    }
+    setLsaLoading(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setLsaConnected(true);
+    setLsaLoading(false);
+    toast.success("Google Local Service Ads connected successfully!");
+  };
+
+  const handleDisconnectLSA = () => {
+    setLsaConnected(false);
+    setLsaAccountId("");
+    toast.success("Google Local Service Ads disconnected");
+  };
   const handleSaveZapier = () => {
     if (!zapierWebhookUrl.trim()) {
       toast.error("Please enter your Zapier webhook URL");
@@ -183,6 +234,254 @@ const AgentSettings = () => {
             </CardContent>
           </Card>
 
+          {/* Google My Business Integration */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Google My Business</CardTitle>
+                    <CardDescription>
+                      Manage reviews, respond to customers, and track your business presence
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant={gmbConnected ? "default" : "secondary"} className="gap-1">
+                  {gmbConnected ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3 h-3" />
+                      Not Connected
+                    </>
+                  )}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {gmbConnected ? (
+                <>
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Business Name</span>
+                      <span className="text-sm font-medium">{gmbBusinessName || "Your Business"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Place ID</span>
+                      <span className="text-sm font-mono">{gmbPlaceId}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Last Synced</span>
+                      <span className="text-sm">Just now</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Sync Reviews
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDisconnectGMB}>
+                      Disconnect
+                    </Button>
+                    <a 
+                      href="https://business.google.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline inline-flex items-center gap-1 ml-auto"
+                    >
+                      Open Dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Enabled Features</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Auto-respond to reviews</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Sync new reviews</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Review notifications</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">AI review analysis</span>
+                        <Switch defaultChecked />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="gmb-place-id">Google Place ID</Label>
+                    <Input 
+                      id="gmb-place-id" 
+                      placeholder="ChIJ..." 
+                      value={gmbPlaceId}
+                      onChange={(e) => setGmbPlaceId(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Find your Place ID at{" "}
+                      <a 
+                        href="https://developers.google.com/maps/documentation/places/web-service/place-id" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        Google's Place ID Finder
+                      </a>
+                    </p>
+                  </div>
+                  <Button onClick={handleConnectGMB} disabled={gmbLoading}>
+                    {gmbLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      "Connect Google My Business"
+                    )}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Google Local Service Ads Integration */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                    <Megaphone className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Google Local Service Ads</CardTitle>
+                    <CardDescription>
+                      Track LSA leads, manage disputes, and monitor your Google Guaranteed status
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant={lsaConnected ? "default" : "secondary"} className="gap-1">
+                  {lsaConnected ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3 h-3" />
+                      Not Connected
+                    </>
+                  )}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {lsaConnected ? (
+                <>
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Account ID</span>
+                      <span className="text-sm font-mono">{lsaAccountId}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+                        Google Guaranteed
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">This Month Leads</span>
+                      <span className="text-sm font-medium">24</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Sync Leads
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDisconnectLSA}>
+                      Disconnect
+                    </Button>
+                    <a 
+                      href="https://ads.google.com/localservices" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline inline-flex items-center gap-1 ml-auto"
+                    >
+                      Open LSA Dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Enabled Features</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Auto-import leads</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Lead notifications</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">Auto-dispute invalid leads</span>
+                        <Switch />
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span className="text-sm">AI lead qualification</span>
+                        <Switch defaultChecked />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="lsa-account-id">LSA Account ID</Label>
+                    <Input 
+                      id="lsa-account-id" 
+                      placeholder="Enter your Local Service Ads account ID" 
+                      value={lsaAccountId}
+                      onChange={(e) => setLsaAccountId(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Find your account ID in the{" "}
+                      <a 
+                        href="https://ads.google.com/localservices" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        Google LSA Dashboard
+                      </a>
+                    </p>
+                  </div>
+                  <Button onClick={handleConnectLSA} disabled={lsaLoading}>
+                    {lsaLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      "Connect Local Service Ads"
+                    )}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Other Integrations */}
           <Card>
             <CardHeader>
@@ -191,28 +490,21 @@ const AgentSettings = () => {
                 Other Integrations
               </CardTitle>
               <CardDescription>
-                Manage third-party integrations
+                Additional third-party integrations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <p className="font-medium">Google Business Profile</p>
-                  <p className="text-sm text-muted-foreground">Not connected</p>
-                </div>
-                <Button variant="outline">Connect</Button>
-              </div>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
                   <p className="font-medium">CRM Integration</p>
-                  <p className="text-sm text-muted-foreground">Not connected</p>
+                  <p className="text-sm text-muted-foreground">Sync leads with your CRM</p>
                 </div>
                 <Button variant="outline">Connect</Button>
               </div>
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <p className="font-medium">Calendar Integration</p>
-                  <p className="text-sm text-muted-foreground">Not connected</p>
+                  <p className="text-sm text-muted-foreground">Sync appointments automatically</p>
                 </div>
                 <Button variant="outline">Connect</Button>
               </div>
