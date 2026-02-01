@@ -16,13 +16,38 @@ export type AgentType = "voice" | "speed-to-lead" | "reviews" | null;
 export interface BusinessProfile {
   business_name: string;
   business_description: string;
+  business_tagline: string;
   business_phone: string;
+  business_email: string;
   business_address: string;
   business_website: string;
   business_logo_url: string;
   business_colors: Record<string, string>;
   business_services: string[];
+  business_specialties: string[];
+  business_equipment_brands: string[];
+  business_certifications: string[];
+  business_service_area: {
+    cities?: string[];
+    counties?: string[];
+    states?: string[];
+    zip_codes?: string[];
+    radius?: string;
+    description?: string;
+  };
+  business_hours: Record<string, string>;
+  business_emergency_service: boolean;
+  business_locations: Array<{
+    name?: string;
+    address?: string;
+    phone?: string;
+    hours?: string;
+  }>;
   business_team_info: string;
+  business_years_in_business: string;
+  business_pricing_info: string;
+  business_guarantees: string[];
+  business_payment_methods: string[];
   business_faqs: Array<{ question: string; answer: string }>;
   business_social_links: Record<string, string>;
 }
@@ -41,13 +66,26 @@ const Onboarding = () => {
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile>({
     business_name: "",
     business_description: "",
+    business_tagline: "",
     business_phone: "",
+    business_email: "",
     business_address: "",
     business_website: "",
     business_logo_url: "",
     business_colors: {},
     business_services: [],
+    business_specialties: [],
+    business_equipment_brands: [],
+    business_certifications: [],
+    business_service_area: {},
+    business_hours: {},
+    business_emergency_service: false,
+    business_locations: [],
     business_team_info: "",
+    business_years_in_business: "",
+    business_pricing_info: "",
+    business_guarantees: [],
+    business_payment_methods: [],
     business_faqs: [],
     business_social_links: {},
   });
