@@ -24,6 +24,21 @@ const integrations = [
     logo: "N",
     color: "from-emerald-500 to-emerald-600",
   },
+  {
+    name: "HomeAdvisor",
+    logo: "H",
+    color: "from-orange-400 to-orange-500",
+  },
+  {
+    name: "Yelp",
+    logo: "Y",
+    color: "from-red-600 to-red-700",
+  },
+  {
+    name: "Zillow",
+    logo: "Z",
+    color: "from-blue-600 to-blue-700",
+  },
 ];
 
 const Integrations = () => {
