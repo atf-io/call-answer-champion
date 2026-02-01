@@ -74,15 +74,76 @@ Deno.serve(async (req) => {
             type: 'object',
             properties: {
               business_name: { type: 'string', description: 'The name of the business or company' },
-              business_description: { type: 'string', description: 'A brief description of what the business does' },
-              phone: { type: 'string', description: 'Phone number of the business' },
-              address: { type: 'string', description: 'Physical address of the business' },
+              business_description: { type: 'string', description: 'A comprehensive description of what the business does, their mission, and value proposition' },
+              phone: { type: 'string', description: 'Primary phone number of the business' },
+              email: { type: 'string', description: 'Primary email address of the business' },
+              address: { type: 'string', description: 'Physical address or headquarters location of the business' },
               services: { 
                 type: 'array', 
                 items: { type: 'string' },
-                description: 'List of services or products offered'
+                description: 'Complete list of all services, products, or offerings provided by the business'
               },
-              team_info: { type: 'string', description: 'Information about the team or staff' },
+              service_area: {
+                type: 'object',
+                properties: {
+                  cities: { type: 'array', items: { type: 'string' }, description: 'Cities served' },
+                  counties: { type: 'array', items: { type: 'string' }, description: 'Counties served' },
+                  states: { type: 'array', items: { type: 'string' }, description: 'States served' },
+                  zip_codes: { type: 'array', items: { type: 'string' }, description: 'ZIP codes served' },
+                  radius: { type: 'string', description: 'Service radius from main location if mentioned' },
+                  description: { type: 'string', description: 'General description of service area coverage' }
+                },
+                description: 'Geographic areas where the business provides services'
+              },
+              business_hours: {
+                type: 'object',
+                properties: {
+                  monday: { type: 'string' },
+                  tuesday: { type: 'string' },
+                  wednesday: { type: 'string' },
+                  thursday: { type: 'string' },
+                  friday: { type: 'string' },
+                  saturday: { type: 'string' },
+                  sunday: { type: 'string' },
+                  notes: { type: 'string', description: 'Additional hours info like 24/7 emergency service, holiday hours, etc.' }
+                },
+                description: 'Business operating hours for each day of the week'
+              },
+              locations: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', description: 'Location name or branch name' },
+                    address: { type: 'string' },
+                    phone: { type: 'string' },
+                    hours: { type: 'string' }
+                  }
+                },
+                description: 'All business locations or branches'
+              },
+              equipment_brands: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Brands or equipment the business works with, installs, or services'
+              },
+              certifications: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Professional certifications, licenses, or accreditations'
+              },
+              team_info: { type: 'string', description: 'Information about the team, staff, or company history and experience' },
+              specialties: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Areas of specialty or expertise'
+              },
+              pricing_info: { type: 'string', description: 'Any pricing information, estimates, or financing options mentioned' },
+              guarantees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Warranties, guarantees, or satisfaction promises'
+              },
               faqs: {
                 type: 'array',
                 items: {
@@ -92,7 +153,7 @@ Deno.serve(async (req) => {
                     answer: { type: 'string' }
                   }
                 },
-                description: 'Frequently asked questions'
+                description: 'Frequently asked questions and their answers'
               },
               social_links: {
                 type: 'object',
@@ -101,10 +162,24 @@ Deno.serve(async (req) => {
                   twitter: { type: 'string' },
                   instagram: { type: 'string' },
                   linkedin: { type: 'string' },
-                  youtube: { type: 'string' }
+                  youtube: { type: 'string' },
+                  yelp: { type: 'string' },
+                  google_business: { type: 'string' },
+                  nextdoor: { type: 'string' },
+                  bbb: { type: 'string' },
+                  angi: { type: 'string' },
+                  homeadvisor: { type: 'string' }
                 },
-                description: 'Social media profile URLs'
-              }
+                description: 'All social media and review profile URLs'
+              },
+              payment_methods: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Accepted payment methods and financing options'
+              },
+              emergency_service: { type: 'boolean', description: 'Whether the business offers emergency or 24/7 service' },
+              years_in_business: { type: 'string', description: 'How long the business has been operating' },
+              tagline: { type: 'string', description: 'Business slogan or tagline' }
             }
           }
         }],
@@ -131,13 +206,36 @@ Deno.serve(async (req) => {
         // Basic info from extraction
         business_name: extractedJson.business_name || metadata.title || '',
         business_description: extractedJson.business_description || metadata.description || '',
+        tagline: extractedJson.tagline || '',
         phone: extractedJson.phone || '',
+        email: extractedJson.email || '',
         address: extractedJson.address || '',
         website: formattedUrl,
         
-        // Services and team
+        // Services and offerings
         services: extractedJson.services || [],
+        specialties: extractedJson.specialties || [],
+        equipment_brands: extractedJson.equipment_brands || [],
+        certifications: extractedJson.certifications || [],
+        
+        // Service area
+        service_area: extractedJson.service_area || {},
+        
+        // Hours and availability
+        business_hours: extractedJson.business_hours || {},
+        emergency_service: extractedJson.emergency_service || false,
+        
+        // Locations
+        locations: extractedJson.locations || [],
+        
+        // Business info
         team_info: extractedJson.team_info || '',
+        years_in_business: extractedJson.years_in_business || '',
+        pricing_info: extractedJson.pricing_info || '',
+        guarantees: extractedJson.guarantees || [],
+        payment_methods: extractedJson.payment_methods || [],
+        
+        // FAQs
         faqs: extractedJson.faqs || [],
         
         // Branding
