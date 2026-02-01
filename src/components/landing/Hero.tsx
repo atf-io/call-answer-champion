@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Phone, Star, ArrowRight, Play } from "lucide-react";
+import { Phone, Star, ArrowRight, Play, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Hero = () => {
@@ -43,7 +43,7 @@ const Hero = () => {
           </div>
 
           {/* Feature Cards Preview */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto animate-slide-up" style={{ animationDelay: "0.3s" }}>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto animate-slide-up" style={{ animationDelay: "0.3s" }}>
             <div className="glass rounded-2xl p-6 text-left hover:shadow-elevated transition-all duration-300 group cursor-pointer">
               <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Phone className="w-6 h-6 text-primary-foreground" />
@@ -51,6 +51,16 @@ const Hero = () => {
               <h3 className="text-lg font-semibold mb-2">After-Hours AI Agents</h3>
               <p className="text-sm text-muted-foreground">
                 Powered by Retell.ai, our agents handle calls naturally, book appointments, and capture leads while you sleep.
+              </p>
+            </div>
+
+            <div className="glass rounded-2xl p-6 text-left hover:shadow-elevated transition-all duration-300 group cursor-pointer">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Lead Intake Agents</h3>
+              <p className="text-sm text-muted-foreground">
+                Instantly call leads from Angi, Thumbtack, and other aggregators to qualify and convert them before competitors.
               </p>
             </div>
 
