@@ -14,7 +14,277 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_agents: {
+        Row: {
+          avg_duration_seconds: number | null
+          created_at: string
+          greeting_message: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          personality: string | null
+          retell_agent_id: string | null
+          satisfaction_score: number | null
+          schedule_days: string[] | null
+          schedule_end: string | null
+          schedule_start: string | null
+          total_calls: number | null
+          updated_at: string
+          user_id: string
+          voice_type: string | null
+        }
+        Insert: {
+          avg_duration_seconds?: number | null
+          created_at?: string
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          personality?: string | null
+          retell_agent_id?: string | null
+          satisfaction_score?: number | null
+          schedule_days?: string[] | null
+          schedule_end?: string | null
+          schedule_start?: string | null
+          total_calls?: number | null
+          updated_at?: string
+          user_id: string
+          voice_type?: string | null
+        }
+        Update: {
+          avg_duration_seconds?: number | null
+          created_at?: string
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          personality?: string | null
+          retell_agent_id?: string | null
+          satisfaction_score?: number | null
+          schedule_days?: string[] | null
+          schedule_end?: string | null
+          schedule_start?: string | null
+          total_calls?: number | null
+          updated_at?: string
+          user_id?: string
+          voice_type?: string | null
+        }
+        Relationships: []
+      }
+      call_logs: {
+        Row: {
+          agent_id: string | null
+          caller_number: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          retell_call_id: string | null
+          sentiment: string | null
+          status: string | null
+          transcript: string | null
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          caller_number?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          retell_call_id?: string | null
+          sentiment?: string | null
+          status?: string | null
+          transcript?: string | null
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          caller_number?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          retell_call_id?: string | null
+          sentiment?: string | null
+          status?: string | null
+          transcript?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_integrations: {
+        Row: {
+          business_name: string
+          created_at: string
+          google_place_id: string | null
+          id: string
+          is_connected: boolean | null
+          last_synced_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          google_place_id?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          google_place_id?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company_name: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          author_name: string
+          author_photo_url: string | null
+          created_at: string
+          google_integration_id: string | null
+          google_review_id: string | null
+          id: string
+          rating: number
+          response_date: string | null
+          response_text: string | null
+          review_date: string
+          review_text: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          author_photo_url?: string | null
+          created_at?: string
+          google_integration_id?: string | null
+          google_review_id?: string | null
+          id?: string
+          rating: number
+          response_date?: string | null
+          response_text?: string | null
+          review_date?: string
+          review_text?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          author_photo_url?: string | null
+          created_at?: string
+          google_integration_id?: string | null
+          google_review_id?: string | null
+          id?: string
+          rating?: number
+          response_date?: string | null
+          response_text?: string | null
+          review_date?: string
+          review_text?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_google_integration_id_fkey"
+            columns: ["google_integration_id"]
+            isOneToOne: false
+            referencedRelation: "google_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          auto_respond_reviews: boolean | null
+          created_at: string
+          google_api_configured: boolean | null
+          id: string
+          notification_email: boolean | null
+          notification_sms: boolean | null
+          retell_api_key_configured: boolean | null
+          review_response_tone: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_respond_reviews?: boolean | null
+          created_at?: string
+          google_api_configured?: boolean | null
+          id?: string
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          retell_api_key_configured?: boolean | null
+          review_response_tone?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_respond_reviews?: boolean | null
+          created_at?: string
+          google_api_configured?: boolean | null
+          id?: string
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          retell_api_key_configured?: boolean | null
+          review_response_tone?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
