@@ -1,41 +1,45 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Phone, Plus, Settings, Power, MoreHorizontal, Mic, Clock, CheckCircle2 } from "lucide-react";
+import { Phone, Settings, Power, MoreHorizontal, Mic, Clock, CheckCircle2, Trash2, Loader2 } from "lucide-react";
+import { useAgents } from "@/hooks/useAgents";
+import CreateAgentDialog from "@/components/agents/CreateAgentDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const agents = [
-  {
-    id: 1,
-    name: "After Hours Support",
-    status: "active",
-    calls: 1247,
-    avgDuration: "3:45",
-    satisfaction: 4.9,
-    voice: "Professional Female",
-    schedule: "6PM - 8AM",
-  },
-  {
-    id: 2,
-    name: "Weekend Handler",
-    status: "active",
-    calls: 856,
-    avgDuration: "4:12",
-    satisfaction: 4.7,
-    voice: "Friendly Male",
-    schedule: "Sat & Sun",
-  },
-  {
-    id: 3,
-    name: "Holiday Support",
-    status: "inactive",
-    calls: 234,
-    avgDuration: "3:20",
-    satisfaction: 4.8,
-    voice: "Professional Male",
-    schedule: "Holidays Only",
-  },
-];
+const formatDuration = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+const formatScheduleDays = (days: string[]) => {
+  if (days.length === 7) return "Every day";
+  if (days.length === 5 && !days.includes("saturday") && !days.includes("sunday")) {
+    return "Weekdays";
+  }
+  if (days.length === 2 && days.includes("saturday") && days.includes("sunday")) {
+    return "Weekends";
+  }
+  return days.map((d) => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(", ");
+};
 
 const Agents = () => {
+  const { agents, loading, createAgent, toggleAgentStatus, deleteAgent } = useAgents();
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-8">
@@ -45,10 +49,7 @@ const Agents = () => {
             <h1 className="text-3xl font-bold mb-2">AI Agents</h1>
             <p className="text-muted-foreground">Manage your Retell.ai voice agents</p>
           </div>
-          <Button variant="hero">
-            <Plus className="w-4 h-4" />
-            Create Agent
-          </Button>
+          <CreateAgentDialog onCreateAgent={createAgent} />
         </div>
 
         {/* Agents Grid */}
@@ -65,26 +66,45 @@ const Agents = () => {
                     <h3 className="font-semibold">{agent.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`w-2 h-2 rounded-full ${
-                        agent.status === "active" ? "bg-success" : "bg-muted-foreground"
+                        agent.is_active ? "bg-success" : "bg-muted-foreground"
                       }`} />
-                      <span className="text-xs text-muted-foreground capitalize">{agent.status}</span>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {agent.is_active ? "active" : "inactive"}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Edit Agent
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => deleteAgent(agent.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Agent
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-muted/30 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Total Calls</p>
-                  <p className="text-lg font-semibold">{agent.calls.toLocaleString()}</p>
+                  <p className="text-lg font-semibold">{agent.total_calls.toLocaleString()}</p>
                 </div>
                 <div className="bg-muted/30 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Avg Duration</p>
-                  <p className="text-lg font-semibold">{agent.avgDuration}</p>
+                  <p className="text-lg font-semibold">{formatDuration(agent.avg_duration_seconds)}</p>
                 </div>
               </div>
 
@@ -93,17 +113,19 @@ const Agents = () => {
                 <div className="flex items-center gap-2 text-sm">
                   <Mic className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Voice:</span>
-                  <span className="font-medium">{agent.voice}</span>
+                  <span className="font-medium">{agent.voice_type}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Schedule:</span>
-                  <span className="font-medium">{agent.schedule}</span>
+                  <span className="font-medium">
+                    {agent.schedule_start} - {agent.schedule_end} ({formatScheduleDays(agent.schedule_days)})
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Satisfaction:</span>
-                  <span className="font-medium">{agent.satisfaction}/5</span>
+                  <span className="font-medium">{Number(agent.satisfaction_score).toFixed(1)}/5</span>
                 </div>
               </div>
 
@@ -114,27 +136,31 @@ const Agents = () => {
                   Configure
                 </Button>
                 <Button 
-                  variant={agent.status === "active" ? "outline" : "default"} 
+                  variant={agent.is_active ? "outline" : "default"} 
                   size="sm" 
                   className="flex-1"
+                  onClick={() => toggleAgentStatus(agent.id, !agent.is_active)}
                 >
                   <Power className="w-4 h-4" />
-                  {agent.status === "active" ? "Disable" : "Enable"}
+                  {agent.is_active ? "Disable" : "Enable"}
                 </Button>
               </div>
             </div>
           ))}
 
           {/* Create New Agent Card */}
-          <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px] hover:border-primary/50 transition-colors cursor-pointer group">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors">
-              <Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+          {agents.length === 0 && (
+            <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px] col-span-full">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <Phone className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold mb-2">No Agents Yet</h3>
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                Create your first AI voice agent to start handling after-hours calls
+              </p>
+              <CreateAgentDialog onCreateAgent={createAgent} />
             </div>
-            <h3 className="font-semibold mb-2">Create New Agent</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              Set up a new AI voice agent with custom voice and behavior
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

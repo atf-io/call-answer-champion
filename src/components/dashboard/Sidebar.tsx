@@ -1,12 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Phone,
   Star,
   Settings,
   BarChart3,
-  Users,
   HelpCircle,
   LogOut,
 } from "lucide-react";
@@ -16,7 +16,6 @@ const navigation = [
   { name: "AI Agents", href: "/dashboard/agents", icon: Phone },
   { name: "Reviews", href: "/dashboard/reviews", icon: Star },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Team", href: "/dashboard/team", icon: Users },
 ];
 
 const bottomNavigation = [
@@ -26,6 +25,17 @@ const bottomNavigation = [
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const userInitials = user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : "U";
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
@@ -82,7 +92,10 @@ const Sidebar = () => {
           );
         })}
         
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-all duration-200">
+        <button 
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-all duration-200"
+        >
           <LogOut className="w-5 h-5" />
           Sign Out
         </button>
@@ -92,11 +105,13 @@ const Sidebar = () => {
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-sm font-semibold text-primary-foreground">
-            JD
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
-            <p className="text-xs text-sidebar-foreground/50 truncate">john@company.com</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              {user?.email || "User"}
+            </p>
+            <p className="text-xs text-sidebar-foreground/50 truncate">Free Plan</p>
           </div>
         </div>
       </div>

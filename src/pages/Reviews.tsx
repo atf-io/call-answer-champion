@@ -1,58 +1,16 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, RefreshCw, Filter, CheckCircle2, Clock, Sparkles } from "lucide-react";
-
-const reviews = [
-  {
-    id: 1,
-    author: "Sarah Mitchell",
-    rating: 5,
-    text: "Absolutely fantastic service! The team was incredibly responsive and professional. Would highly recommend to anyone looking for quality work.",
-    date: "2 hours ago",
-    status: "responded",
-    response: "Thank you so much for your kind words, Sarah! We're thrilled to hear you had a great experience with our team.",
-  },
-  {
-    id: 2,
-    author: "John Davidson",
-    rating: 4,
-    text: "Good overall experience. The work was completed on time and the quality was solid. Just a minor issue with communication that was quickly resolved.",
-    date: "5 hours ago",
-    status: "pending",
-    response: null,
-  },
-  {
-    id: 3,
-    author: "Michael Roberts",
-    rating: 3,
-    text: "Average service. There's definitely room for improvement in terms of response time and follow-up. However, the final result was satisfactory.",
-    date: "1 day ago",
-    status: "pending",
-    response: null,
-  },
-  {
-    id: 4,
-    author: "Emily Chen",
-    rating: 5,
-    text: "Exceptional work! They went above and beyond my expectations. The attention to detail was remarkable and the customer service was top-notch.",
-    date: "2 days ago",
-    status: "responded",
-    response: "Thank you, Emily! Your feedback means the world to us. We look forward to serving you again!",
-  },
-  {
-    id: 5,
-    author: "David Wilson",
-    rating: 2,
-    text: "Disappointed with the service. Delays and miscommunication made the experience frustrating. Expected better based on reviews.",
-    date: "3 days ago",
-    status: "pending",
-    response: null,
-  },
-];
+import { Textarea } from "@/components/ui/textarea";
+import { Star, MessageSquare, RefreshCw, CheckCircle2, Clock, Sparkles, Loader2 } from "lucide-react";
+import { useReviews } from "@/hooks/useReviews";
 
 const Reviews = () => {
+  const { reviews, loading, respondToReview } = useReviews();
   const [filter, setFilter] = useState<"all" | "pending" | "responded">("all");
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const filteredReviews = reviews.filter((review) => {
     if (filter === "all") return true;
@@ -60,6 +18,42 @@ const Reviews = () => {
   });
 
   const pendingCount = reviews.filter((r) => r.status === "pending").length;
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+    : "0";
+
+  const handleRespond = async (reviewId: string) => {
+    if (!responseText.trim()) return;
+    
+    setSaving(true);
+    await respondToReview(reviewId, responseText);
+    setSaving(false);
+    setRespondingTo(null);
+    setResponseText("");
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    
+    if (hours < 1) return "Just now";
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -110,7 +104,7 @@ const Reviews = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Avg Rating</p>
-              <p className="text-xl font-bold">4.2</p>
+              <p className="text-xl font-bold">{avgRating}</p>
             </div>
           </div>
         </div>
@@ -122,7 +116,7 @@ const Reviews = () => {
             size="sm"
             onClick={() => setFilter("all")}
           >
-            All Reviews
+            All Reviews ({reviews.length})
           </Button>
           <Button
             variant={filter === "pending" ? "default" : "ghost"}
@@ -141,62 +135,107 @@ const Reviews = () => {
         </div>
 
         {/* Reviews List */}
-        <div className="space-y-4">
-          {filteredReviews.map((review) => (
-            <div key={review.id} className="glass rounded-2xl p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-lg font-semibold text-primary-foreground">
-                    {review.author.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{review.author}</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < review.rating ? "text-warning fill-warning" : "text-muted-foreground"
-                            }`}
-                          />
-                        ))}
+        {filteredReviews.length === 0 ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <Star className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Reviews Yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Connect your Google Business Profile to start managing reviews
+            </p>
+            <Button variant="hero">Connect Google</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredReviews.map((review) => (
+              <div key={review.id} className="glass rounded-2xl p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-lg font-semibold text-primary-foreground">
+                      {review.author_name.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{review.author_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${
+                                i < review.rating ? "text-warning fill-warning" : "text-muted-foreground"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          • {formatDate(review.review_date)}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">• {review.date}</span>
                     </div>
                   </div>
+                  <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${
+                    review.status === "responded" 
+                      ? "bg-success/10 text-success" 
+                      : "bg-warning/10 text-warning"
+                  }`}>
+                    {review.status === "responded" ? "Responded" : "Pending Response"}
+                  </span>
                 </div>
-                <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${
-                  review.status === "responded" 
-                    ? "bg-success/10 text-success" 
-                    : "bg-warning/10 text-warning"
-                }`}>
-                  {review.status === "responded" ? "Responded" : "Pending Response"}
-                </span>
+
+                <p className="text-foreground mb-4">{review.review_text || "No review text"}</p>
+
+                {review.response_text ? (
+                  <div className="bg-muted/30 rounded-xl p-4 border-l-2 border-primary">
+                    <p className="text-xs text-muted-foreground mb-2">Your Response:</p>
+                    <p className="text-sm text-foreground">{review.response_text}</p>
+                  </div>
+                ) : respondingTo === review.id ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={responseText}
+                      onChange={(e) => setResponseText(e.target.value)}
+                      placeholder="Write your response..."
+                      className="bg-muted/50 min-h-[100px]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleRespond(review.id)}
+                        disabled={saving || !responseText.trim()}
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Response"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setRespondingTo(null);
+                          setResponseText("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Button variant="default" size="sm">
+                      <Sparkles className="w-4 h-4" />
+                      Generate AI Response
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setRespondingTo(review.id)}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Write Manually
+                    </Button>
+                  </div>
+                )}
               </div>
-
-              <p className="text-foreground mb-4">{review.text}</p>
-
-              {review.response ? (
-                <div className="bg-muted/30 rounded-xl p-4 border-l-2 border-primary">
-                  <p className="text-xs text-muted-foreground mb-2">Your Response:</p>
-                  <p className="text-sm text-foreground">{review.response}</p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Button variant="default" size="sm">
-                    <Sparkles className="w-4 h-4" />
-                    Generate AI Response
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <MessageSquare className="w-4 h-4" />
-                    Write Manually
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
