@@ -35,7 +35,7 @@ const voiceModels = [
 ];
 
 const ambientSounds = [
-  { id: "", name: "None" },
+  { id: "none", name: "None" },
   { id: "coffee-shop", name: "Coffee Shop" },
   { id: "convention-hall", name: "Convention Hall" },
   { id: "summer-outdoor", name: "Summer Outdoor" },
@@ -95,7 +95,7 @@ const defaultFormData: CreateAgentData = {
   interruption_sensitivity: 1,
   enable_backchannel: true,
   backchannel_frequency: 0.9,
-  ambient_sound: "",
+  ambient_sound: "none",
   ambient_sound_volume: 1,
   language: "en-US",
   enable_voicemail_detection: true,
@@ -445,15 +445,15 @@ export const CreateAgentDialog = ({
                 <div className="space-y-2">
                   <Label>Ambient Sound</Label>
                   <Select
-                    value={formData.ambient_sound || ""}
-                    onValueChange={(value) => setFormData({ ...formData, ambient_sound: value || undefined })}
+                    value={formData.ambient_sound || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, ambient_sound: value === "none" ? undefined : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="None" />
                     </SelectTrigger>
                     <SelectContent>
                       {ambientSounds.map((sound) => (
-                        <SelectItem key={sound.id || "none"} value={sound.id}>
+                        <SelectItem key={sound.id} value={sound.id}>
                           {sound.name}
                         </SelectItem>
                       ))}
