@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Key, Globe, Shield, Webhook, Zap, Check, Loader2, ExternalLink, MapPin, Megaphone, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import LeadPlatformIntegrations from "@/components/settings/LeadPlatformIntegrations";
 
 const AgentSettings = () => {
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState("");
@@ -481,6 +482,9 @@ const AgentSettings = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Lead Platform Integrations */}
+          <LeadPlatformIntegrations />
 
           {/* Other Integrations */}
           <Card>
