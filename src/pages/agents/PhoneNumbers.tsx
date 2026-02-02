@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { usePhoneNumbers } from "@/hooks/usePhoneNumbers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { PurchasePhoneNumberDialog } from "@/components/agents/PurchasePhoneNumberDialog";
 
 const PhoneNumbers = () => {
-  const { phoneNumbers, loading, syncing, syncPhoneNumbers } = usePhoneNumbers();
+  const { phoneNumbers, loading, syncing, purchasing, syncPhoneNumbers, purchasePhoneNumber } = usePhoneNumbers();
   const [searchQuery, setSearchQuery] = useState("");
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
 
   const filteredNumbers = phoneNumbers.filter(phone => {
     if (!searchQuery) return true;
@@ -33,6 +35,16 @@ const PhoneNumbers = () => {
       return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
     }
     return phone;
+  };
+
+  const handlePurchase = async (data: {
+    area_code?: string;
+    nickname?: string;
+    inbound_agent_id?: string;
+    outbound_agent_id?: string;
+  }) => {
+    await purchasePhoneNumber(data);
+    setPurchaseDialogOpen(false);
   };
 
   return (
@@ -57,7 +69,7 @@ const PhoneNumbers = () => {
               <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing..." : "Sync from Retell"}
             </Button>
-            <Button>
+            <Button onClick={() => setPurchaseDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add Phone Number
             </Button>
@@ -66,7 +78,10 @@ const PhoneNumbers = () => {
 
         {/* Phone Number Options */}
         <div className="grid md:grid-cols-2 gap-6">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer group"
+            onClick={() => setPurchaseDialogOpen(true)}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -80,13 +95,13 @@ const PhoneNumbers = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={() => setPurchaseDialogOpen(true)}>
                 Browse Available Numbers
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer group opacity-60">
             <CardHeader>
               <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                 <ExternalLink className="w-6 h-6 text-muted-foreground" />
@@ -97,8 +112,8 @@ const PhoneNumbers = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
-                Connect Number
+              <Button variant="outline" className="w-full" disabled>
+                Coming Soon
               </Button>
             </CardContent>
           </Card>
@@ -134,7 +149,7 @@ const PhoneNumbers = () => {
                   <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
                   Sync from Retell
                 </Button>
-                <Button>
+                <Button onClick={() => setPurchaseDialogOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Your First Number
                 </Button>
@@ -193,6 +208,13 @@ const PhoneNumbers = () => {
           </div>
         )}
       </div>
+
+      <PurchasePhoneNumberDialog
+        open={purchaseDialogOpen}
+        onOpenChange={setPurchaseDialogOpen}
+        onPurchase={handlePurchase}
+        isPurchasing={purchasing}
+      />
     </AgentLayout>
   );
 };
