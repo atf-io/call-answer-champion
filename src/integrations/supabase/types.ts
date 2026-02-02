@@ -204,6 +204,66 @@ export type Database = {
           },
         ]
       }
+      phone_numbers: {
+        Row: {
+          area_code: string | null
+          created_at: string
+          id: string
+          inbound_agent_id: string | null
+          is_active: boolean | null
+          last_synced_at: string | null
+          nickname: string | null
+          outbound_agent_id: string | null
+          phone_number: string
+          retell_phone_number_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_code?: string | null
+          created_at?: string
+          id?: string
+          inbound_agent_id?: string | null
+          is_active?: boolean | null
+          last_synced_at?: string | null
+          nickname?: string | null
+          outbound_agent_id?: string | null
+          phone_number: string
+          retell_phone_number_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_code?: string | null
+          created_at?: string
+          id?: string
+          inbound_agent_id?: string | null
+          is_active?: boolean | null
+          last_synced_at?: string | null
+          nickname?: string | null
+          outbound_agent_id?: string | null
+          phone_number?: string
+          retell_phone_number_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phone_numbers_inbound_agent_id_fkey"
+            columns: ["inbound_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "phone_numbers_outbound_agent_id_fkey"
+            columns: ["outbound_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
