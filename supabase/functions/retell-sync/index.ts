@@ -7,9 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Retell has different base URLs for different endpoints
-const RETELL_BASE_URL = "https://api.retellai.com/v2"; // For calls, agents
-const RETELL_BASE_URL_V1 = "https://api.retellai.com"; // For phone numbers and other resources
+// Retell API base URL
+const RETELL_BASE_URL = "https://api.retellai.com";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -131,7 +130,7 @@ serve(async (req) => {
 
 async function listRetellAgents(apiKey: string) {
   console.log("Fetching Retell agents...");
-  const response = await fetch(`${RETELL_BASE_URL}/list-voice-agent`, {
+  const response = await fetch(`${RETELL_BASE_URL}/list-agents`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -151,7 +150,7 @@ async function listRetellAgents(apiKey: string) {
 
 async function getRetellAgent(apiKey: string, agentId: string) {
   console.log(`Fetching Retell agent: ${agentId}`);
-  const response = await fetch(`${RETELL_BASE_URL}/get-voice-agent/${agentId}`, {
+  const response = await fetch(`${RETELL_BASE_URL}/get-agent/${agentId}`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -176,16 +175,12 @@ async function listRetellCalls(apiKey: string, agentId?: string, limit: number =
   };
 
   if (agentId) {
-    body.filter_criteria = [
-      {
-        member: ["agent_id"],
-        operator: "contains",
-        value: [agentId],
-      },
-    ];
+    body.filter_criteria = {
+      agent_id: [agentId],
+    };
   }
 
-  const response = await fetch(`${RETELL_BASE_URL}/list-calls`, {
+  const response = await fetch(`${RETELL_BASE_URL}/v2/list-calls`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -207,7 +202,7 @@ async function listRetellCalls(apiKey: string, agentId?: string, limit: number =
 
 async function getRetellCall(apiKey: string, callId: string) {
   console.log(`Fetching Retell call: ${callId}`);
-  const response = await fetch(`${RETELL_BASE_URL}/get-call/${callId}`, {
+  const response = await fetch(`${RETELL_BASE_URL}/v2/get-call/${callId}`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -400,7 +395,7 @@ async function getLiveCallStatus(apiKey: string) {
   console.log("Fetching live call status...");
   
   // Fetch recent calls to check for ongoing ones
-  const response = await fetch(`${RETELL_BASE_URL}/list-calls`, {
+  const response = await fetch(`${RETELL_BASE_URL}/v2/list-calls`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -409,13 +404,9 @@ async function getLiveCallStatus(apiKey: string) {
     body: JSON.stringify({
       limit: 50,
       sort_order: "descending",
-      filter_criteria: [
-        {
-          member: ["call_status"],
-          operator: "contains",
-          value: ["ongoing", "ringing"],
-        },
-      ],
+      filter_criteria: {
+        call_status: ["ongoing", "ringing"],
+      },
     }),
   });
 
@@ -448,8 +439,7 @@ function formatDuration(seconds: number): string {
 
 async function listPhoneNumbers(apiKey: string) {
   console.log("Fetching Retell phone numbers...");
-  // Phone numbers API uses base URL without /v2 prefix
-  const response = await fetch(`${RETELL_BASE_URL_V1}/list-phone-numbers`, {
+  const response = await fetch(`${RETELL_BASE_URL}/list-phone-numbers`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -580,7 +570,7 @@ async function purchasePhoneNumber(
   }
 
   // Call Retell API to create phone number
-  const response = await fetch(`${RETELL_BASE_URL_V1}/create-phone-number`, {
+  const response = await fetch(`${RETELL_BASE_URL}/create-phone-number`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -770,7 +760,7 @@ async function createRetellAgent(
   console.log("Creating Retell agent with payload:", JSON.stringify(retellPayload, null, 2));
 
   // Create the voice agent in Retell
-  const response = await fetch(`${RETELL_BASE_URL}/create-voice-agent`, {
+  const response = await fetch(`${RETELL_BASE_URL}/create-agent`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -868,7 +858,7 @@ async function updateRetellAgent(
     
     console.log("Updating Retell agent with payload:", JSON.stringify(retellPayload, null, 2));
 
-    const response = await fetch(`${RETELL_BASE_URL}/update-voice-agent/${existingAgent.retell_agent_id}`, {
+    const response = await fetch(`${RETELL_BASE_URL}/update-agent/${existingAgent.retell_agent_id}`, {
       method: "PATCH",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -959,7 +949,7 @@ async function deleteRetellAgent(
 
   // If agent has a Retell ID, delete it from Retell
   if (existingAgent.retell_agent_id) {
-    const response = await fetch(`${RETELL_BASE_URL}/delete-voice-agent/${existingAgent.retell_agent_id}`, {
+    const response = await fetch(`${RETELL_BASE_URL}/delete-agent/${existingAgent.retell_agent_id}`, {
       method: "DELETE",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
