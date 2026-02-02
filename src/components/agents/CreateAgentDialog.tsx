@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
-import { CreateAgentData } from "@/hooks/useAgents";
+import { useAgents, CreateAgentData } from "@/hooks/useAgents";
 
 const voiceTypes = [
   "Professional Female",
@@ -28,28 +28,79 @@ const daysOfWeek = [
 ];
 
 interface CreateAgentDialogProps {
-  onCreateAgent: (data: CreateAgentData) => Promise<any>;
+  onCreateAgent?: (data: CreateAgentData) => Promise<any>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  agentType?: string | null;
+  onSuccess?: () => void;
 }
 
-const CreateAgentDialog = ({ onCreateAgent }: CreateAgentDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const CreateAgentDialog = ({ 
+  onCreateAgent, 
+  open: controlledOpen, 
+  onOpenChange: controlledOnOpenChange,
+  agentType,
+  onSuccess 
+}: CreateAgentDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { createAgent } = useAgents();
+  
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (controlledOnOpenChange || (() => {})) : setInternalOpen;
+
+  const getDefaultGreeting = (type?: string | null) => {
+    switch (type) {
+      case "speed-to-lead":
+        return "Hi! This is a quick follow-up call about your recent inquiry. I'd love to help you get started. Do you have a few minutes to chat?";
+      case "reviews":
+        return "";
+      default:
+        return "Hello! Thank you for calling. How can I help you today?";
+    }
+  };
+
+  const getDefaultPersonality = (type?: string | null) => {
+    switch (type) {
+      case "speed-to-lead":
+        return "energetic and helpful";
+      case "reviews":
+        return "professional and appreciative";
+      default:
+        return "friendly and professional";
+    }
+  };
+
   const [formData, setFormData] = useState<CreateAgentData>({
     name: "",
     voice_type: "Professional Female",
-    personality: "friendly and professional",
-    greeting_message: "Hello! Thank you for calling. How can I help you today?",
+    personality: getDefaultPersonality(agentType),
+    greeting_message: getDefaultGreeting(agentType),
     schedule_start: "18:00",
     schedule_end: "08:00",
     schedule_days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
   });
+
+  useEffect(() => {
+    if (open) {
+      setFormData(prev => ({
+        ...prev,
+        personality: getDefaultPersonality(agentType),
+        greeting_message: getDefaultGreeting(agentType),
+      }));
+    }
+  }, [agentType, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
     
     setLoading(true);
-    const result = await onCreateAgent(formData);
+    
+    const handler = onCreateAgent || createAgent;
+    const result = await handler(formData);
+    
     setLoading(false);
     
     if (result) {
@@ -63,6 +114,7 @@ const CreateAgentDialog = ({ onCreateAgent }: CreateAgentDialogProps) => {
         schedule_end: "08:00",
         schedule_days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
       });
+      onSuccess?.();
     }
   };
 
@@ -81,17 +133,32 @@ const CreateAgentDialog = ({ onCreateAgent }: CreateAgentDialogProps) => {
     }
   };
 
+  const getTitle = () => {
+    switch (agentType) {
+      case "voice":
+        return "Create Voice Agent";
+      case "speed-to-lead":
+        return "Create Speed to Lead Agent";
+      case "reviews":
+        return "Create Reviews Agent";
+      default:
+        return "Create New AI Agent";
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="hero">
-          <Plus className="w-4 h-4" />
-          Create Agent
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="hero">
+            <Plus className="w-4 h-4" />
+            Create Agent
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg glass border-border">
         <DialogHeader>
-          <DialogTitle>Create New AI Agent</DialogTitle>
+          <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -136,16 +203,18 @@ const CreateAgentDialog = ({ onCreateAgent }: CreateAgentDialogProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="greeting">Greeting Message</Label>
-            <Textarea
-              id="greeting"
-              value={formData.greeting_message}
-              onChange={(e) => setFormData({ ...formData, greeting_message: e.target.value })}
-              placeholder="Hello! How can I help you today?"
-              className="bg-muted/50 min-h-[80px]"
-            />
-          </div>
+          {agentType !== "reviews" && (
+            <div className="space-y-2">
+              <Label htmlFor="greeting">Greeting Message</Label>
+              <Textarea
+                id="greeting"
+                value={formData.greeting_message}
+                onChange={(e) => setFormData({ ...formData, greeting_message: e.target.value })}
+                placeholder="Hello! How can I help you today?"
+                className="bg-muted/50 min-h-[80px]"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
