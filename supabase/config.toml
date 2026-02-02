@@ -1,1 +1,10 @@
 project_id = "zscmunbouhmwouiczkgk"
+
+[functions.scrape-business]
+verify_jwt = false
+
+[functions.scrape-knowledge-base]
+verify_jwt = false
+
+[functions.retell-sync]
+verify_jwt = false
