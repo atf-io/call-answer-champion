@@ -535,7 +535,8 @@ async function purchasePhoneNumber(
   const requestBody: any = {};
   
   if (areaCode) {
-    requestBody.area_code = areaCode;
+    // Retell API requires area_code as an integer
+    requestBody.area_code = parseInt(areaCode, 10);
   }
   if (nickname) {
     requestBody.nickname = nickname;
