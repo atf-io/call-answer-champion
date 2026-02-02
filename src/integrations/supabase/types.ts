@@ -16,13 +16,28 @@ export type Database = {
     Tables: {
       ai_agents: {
         Row: {
+          ambient_sound: string | null
+          ambient_sound_volume: number | null
           avg_duration_seconds: number | null
+          backchannel_frequency: number | null
+          begin_message_delay_ms: number | null
+          boosted_keywords: string[] | null
           created_at: string
+          enable_backchannel: boolean | null
+          enable_voicemail_detection: boolean | null
+          end_call_after_silence_ms: number | null
           greeting_message: string | null
           id: string
+          interruption_sensitivity: number | null
           is_active: boolean | null
+          language: string | null
+          max_call_duration_ms: number | null
           name: string
+          normalize_for_speech: boolean | null
           personality: string | null
+          reminder_max_count: number | null
+          reminder_trigger_ms: number | null
+          responsiveness: number | null
           retell_agent_id: string | null
           satisfaction_score: number | null
           schedule_days: string[] | null
@@ -31,16 +46,38 @@ export type Database = {
           total_calls: number | null
           updated_at: string
           user_id: string
+          voice_id: string | null
+          voice_model: string | null
+          voice_speed: number | null
+          voice_temperature: number | null
           voice_type: string | null
+          voicemail_detection_timeout_ms: number | null
+          voicemail_message: string | null
+          volume: number | null
         }
         Insert: {
+          ambient_sound?: string | null
+          ambient_sound_volume?: number | null
           avg_duration_seconds?: number | null
+          backchannel_frequency?: number | null
+          begin_message_delay_ms?: number | null
+          boosted_keywords?: string[] | null
           created_at?: string
+          enable_backchannel?: boolean | null
+          enable_voicemail_detection?: boolean | null
+          end_call_after_silence_ms?: number | null
           greeting_message?: string | null
           id?: string
+          interruption_sensitivity?: number | null
           is_active?: boolean | null
+          language?: string | null
+          max_call_duration_ms?: number | null
           name: string
+          normalize_for_speech?: boolean | null
           personality?: string | null
+          reminder_max_count?: number | null
+          reminder_trigger_ms?: number | null
+          responsiveness?: number | null
           retell_agent_id?: string | null
           satisfaction_score?: number | null
           schedule_days?: string[] | null
@@ -49,16 +86,38 @@ export type Database = {
           total_calls?: number | null
           updated_at?: string
           user_id: string
+          voice_id?: string | null
+          voice_model?: string | null
+          voice_speed?: number | null
+          voice_temperature?: number | null
           voice_type?: string | null
+          voicemail_detection_timeout_ms?: number | null
+          voicemail_message?: string | null
+          volume?: number | null
         }
         Update: {
+          ambient_sound?: string | null
+          ambient_sound_volume?: number | null
           avg_duration_seconds?: number | null
+          backchannel_frequency?: number | null
+          begin_message_delay_ms?: number | null
+          boosted_keywords?: string[] | null
           created_at?: string
+          enable_backchannel?: boolean | null
+          enable_voicemail_detection?: boolean | null
+          end_call_after_silence_ms?: number | null
           greeting_message?: string | null
           id?: string
+          interruption_sensitivity?: number | null
           is_active?: boolean | null
+          language?: string | null
+          max_call_duration_ms?: number | null
           name?: string
+          normalize_for_speech?: boolean | null
           personality?: string | null
+          reminder_max_count?: number | null
+          reminder_trigger_ms?: number | null
+          responsiveness?: number | null
           retell_agent_id?: string | null
           satisfaction_score?: number | null
           schedule_days?: string[] | null
@@ -67,7 +126,14 @@ export type Database = {
           total_calls?: number | null
           updated_at?: string
           user_id?: string
+          voice_id?: string | null
+          voice_model?: string | null
+          voice_speed?: number | null
+          voice_temperature?: number | null
           voice_type?: string | null
+          voicemail_detection_timeout_ms?: number | null
+          voicemail_message?: string | null
+          volume?: number | null
         }
         Relationships: []
       }
