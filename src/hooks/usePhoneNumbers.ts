@@ -99,7 +99,21 @@ export const usePhoneNumbers = () => {
       return data;
     } catch (error) {
       console.error("Error purchasing phone number:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to purchase phone number");
+      
+      // Parse and show user-friendly error messages
+      let errorMessage = "Failed to purchase phone number";
+      if (error instanceof Error) {
+        const msg = error.message;
+        if (msg.includes("No phone numbers of this area code")) {
+          errorMessage = "No phone numbers available for this area code. Please try a different area code.";
+        } else if (msg.includes("area_code")) {
+          errorMessage = "Invalid area code format. Please enter a valid 3-digit area code.";
+        } else {
+          errorMessage = msg;
+        }
+      }
+      
+      toast.error(errorMessage);
       throw error;
     } finally {
       setPurchasing(false);
