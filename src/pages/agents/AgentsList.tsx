@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2, History } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { Switch } from "@/components/ui/switch";
@@ -231,6 +232,12 @@ const AgentsList = () => {
                           Retell ID: {agent.retell_agent_id}
                         </p>
                       )}
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+                        <History className="w-3 h-3" />
+                        <span>
+                          Synced {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}
+                        </span>
+                      </div>
                     </CardContent>
                   </Card>
                 );
