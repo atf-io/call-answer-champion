@@ -23,6 +23,7 @@ export const usePhoneNumbers = () => {
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
 
   const fetchPhoneNumbers = useCallback(async () => {
     if (!user) return;
@@ -71,6 +72,40 @@ export const usePhoneNumbers = () => {
     }
   };
 
+  const purchasePhoneNumber = async (options: {
+    area_code?: string;
+    nickname?: string;
+    inbound_agent_id?: string;
+    outbound_agent_id?: string;
+  }) => {
+    if (!user) return;
+    
+    try {
+      setPurchasing(true);
+      const { data, error } = await supabase.functions.invoke("retell-sync", {
+        body: { 
+          action: "purchase-phone-number",
+          area_code: options.area_code,
+          nickname: options.nickname,
+          inbound_agent_id: options.inbound_agent_id === "none" ? undefined : options.inbound_agent_id,
+          outbound_agent_id: options.outbound_agent_id === "none" ? undefined : options.outbound_agent_id,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success(data.message || "Phone number purchased successfully!");
+      await fetchPhoneNumbers();
+      return data;
+    } catch (error) {
+      console.error("Error purchasing phone number:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to purchase phone number");
+      throw error;
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
   useEffect(() => {
     fetchPhoneNumbers();
   }, [fetchPhoneNumbers]);
@@ -79,7 +114,9 @@ export const usePhoneNumbers = () => {
     phoneNumbers,
     loading,
     syncing,
+    purchasing,
     syncPhoneNumbers,
+    purchasePhoneNumber,
     refetch: fetchPhoneNumbers,
   };
 };

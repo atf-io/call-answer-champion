@@ -50,7 +50,8 @@ serve(async (req) => {
       );
     }
 
-    const { action, agentId, limit = 100 } = await req.json();
+    const body = await req.json();
+    const { action, agentId, limit = 100, area_code, nickname, inbound_agent_id, outbound_agent_id } = body;
     console.log(`Retell sync action: ${action} for user: ${user.id}`);
 
     let result;
@@ -92,13 +93,16 @@ serve(async (req) => {
         result = await syncPhoneNumbers(RETELL_API_KEY, supabase, user.id);
         break;
 
+      case "purchase-phone-number":
+        result = await purchasePhoneNumber(RETELL_API_KEY, supabase, user.id, area_code, nickname, inbound_agent_id, outbound_agent_id);
+        break;
+
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
-
     return new Response(
       JSON.stringify(result),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -513,5 +517,101 @@ async function syncPhoneNumbers(apiKey: string, supabase: any, userId: string) {
     updated,
     total: phoneNumbers.length,
     message: `Synced ${synced} new and updated ${updated} phone numbers` 
+  };
+}
+
+async function purchasePhoneNumber(
+  apiKey: string, 
+  supabase: any, 
+  userId: string,
+  areaCode?: string,
+  nickname?: string,
+  inboundAgentId?: string,
+  outboundAgentId?: string
+) {
+  console.log(`Purchasing phone number for user: ${userId}, area code: ${areaCode}`);
+  
+  // Build request body for Retell API
+  const requestBody: any = {};
+  
+  if (areaCode) {
+    requestBody.area_code = areaCode;
+  }
+  if (nickname) {
+    requestBody.nickname = nickname;
+  }
+  if (inboundAgentId) {
+    // Get the retell_agent_id from our agent
+    const { data: agent } = await supabase
+      .from("ai_agents")
+      .select("retell_agent_id")
+      .eq("id", inboundAgentId)
+      .eq("user_id", userId)
+      .single();
+    
+    if (agent?.retell_agent_id) {
+      requestBody.inbound_agent_id = agent.retell_agent_id;
+    }
+  }
+  if (outboundAgentId) {
+    const { data: agent } = await supabase
+      .from("ai_agents")
+      .select("retell_agent_id")
+      .eq("id", outboundAgentId)
+      .eq("user_id", userId)
+      .single();
+    
+    if (agent?.retell_agent_id) {
+      requestBody.outbound_agent_id = agent.retell_agent_id;
+    }
+  }
+
+  // Call Retell API to create phone number
+  const response = await fetch(`${RETELL_BASE_URL_V1}/create-phone-number`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Retell API error:", response.status, errorText);
+    throw new Error(`Failed to purchase phone number: ${errorText}`);
+  }
+
+  const phoneData = await response.json();
+  console.log("Purchased phone number:", phoneData);
+
+  // Save to database
+  const { data: savedPhone, error: insertError } = await supabase
+    .from("phone_numbers")
+    .insert({
+      user_id: userId,
+      retell_phone_number_id: phoneData.phone_number_id,
+      phone_number: phoneData.phone_number,
+      nickname: phoneData.nickname || nickname || null,
+      area_code: phoneData.area_code || areaCode || null,
+      inbound_agent_id: inboundAgentId || null,
+      outbound_agent_id: outboundAgentId || null,
+      is_active: true,
+      last_synced_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Error saving phone number:", insertError);
+    throw new Error(`Phone number purchased but failed to save: ${insertError.message}`);
+  }
+
+  return {
+    success: true,
+    phone_number: phoneData.phone_number,
+    phone_number_id: phoneData.phone_number_id,
+    saved: savedPhone,
+    message: `Successfully purchased ${phoneData.phone_number}`,
   };
 }
