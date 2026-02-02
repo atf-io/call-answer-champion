@@ -235,6 +235,27 @@ async function syncCallsToDatabase(
     return null; // Unknown sentiment values become null
   };
 
+  // Helper to normalize status (constraint requires: completed, voicemail, missed, failed)
+  const normalizeStatus = (status: string | null | undefined): string => {
+    if (!status) return "completed";
+    const lower = status.toLowerCase();
+    // Map Retell statuses to allowed values
+    if (lower === "ended" || lower === "completed" || lower === "transferred") {
+      return "completed";
+    }
+    if (lower === "voicemail") {
+      return "voicemail";
+    }
+    if (lower === "missed" || lower === "no-answer" || lower === "busy") {
+      return "missed";
+    }
+    if (lower === "failed" || lower === "error") {
+      return "failed";
+    }
+    // Default unknown statuses to completed
+    return "completed";
+  };
+
   // Prepare new calls for insertion
   const newCalls = calls
     .filter((call: any) => !existingIds.has(call.call_id))
@@ -244,7 +265,7 @@ async function syncCallsToDatabase(
       retell_call_id: call.call_id,
       caller_number: call.from_number || call.to_number || "Unknown",
       duration_seconds: Math.round((call.end_timestamp - call.start_timestamp) / 1000) || 0,
-      status: call.call_status || "completed",
+      status: normalizeStatus(call.call_status),
       transcript: call.transcript || null,
       sentiment: normalizeSentiment(call.call_analysis?.user_sentiment),
       created_at: new Date(call.start_timestamp).toISOString(),
