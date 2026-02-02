@@ -110,30 +110,33 @@ export const useAgents = () => {
     if (!user) return null;
 
     try {
-      const { data, error } = await supabase
-        .from("ai_agents")
-        .insert({
-          user_id: user.id,
-          ...agentData,
-        })
-        .select()
-        .single();
+      // Call edge function to create agent in Retell and database
+      const { data, error } = await supabase.functions.invoke("retell-sync", {
+        body: {
+          action: "create-agent",
+          agentConfig: agentData,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
-      setAgents((prev) => [data, ...prev]);
-      toast({
-        title: "Agent Created",
-        description: `${agentData.name} has been created successfully.`,
-      });
+      if (data?.agent) {
+        setAgents((prev) => [data.agent, ...prev]);
+        toast({
+          title: "Agent Created",
+          description: `${agentData.name} has been created and synced to Retell.`,
+        });
+        return data.agent;
+      }
       
-      return data;
+      return null;
     } catch (error) {
       console.error("Error creating agent:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create agent",
+        description: error instanceof Error ? error.message : "Failed to create agent",
       });
       return null;
     }
@@ -141,31 +144,38 @@ export const useAgents = () => {
 
   const updateAgent = async (id: string, updates: Partial<Agent>) => {
     try {
-      const { data, error } = await supabase
-        .from("ai_agents")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
+      // Call edge function to update agent in Retell and database
+      const { data, error } = await supabase.functions.invoke("retell-sync", {
+        body: {
+          action: "update-agent",
+          agentId: id,
+          agentConfig: updates,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
-      setAgents((prev) =>
-        prev.map((agent) => (agent.id === id ? data : agent))
-      );
+      if (data?.agent) {
+        setAgents((prev) =>
+          prev.map((agent) => (agent.id === id ? data.agent : agent))
+        );
+        
+        toast({
+          title: "Agent Updated",
+          description: "Agent settings have been saved and synced to Retell.",
+        });
+        
+        return data.agent;
+      }
       
-      toast({
-        title: "Agent Updated",
-        description: "Agent settings have been saved.",
-      });
-      
-      return data;
+      return null;
     } catch (error) {
       console.error("Error updating agent:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update agent",
+        description: error instanceof Error ? error.message : "Failed to update agent",
       });
       return null;
     }
@@ -173,18 +183,22 @@ export const useAgents = () => {
 
   const deleteAgent = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("ai_agents")
-        .delete()
-        .eq("id", id);
+      // Call edge function to delete agent from Retell and database
+      const { data, error } = await supabase.functions.invoke("retell-sync", {
+        body: {
+          action: "delete-agent",
+          agentId: id,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       setAgents((prev) => prev.filter((agent) => agent.id !== id));
       
       toast({
         title: "Agent Deleted",
-        description: "Agent has been removed.",
+        description: "Agent has been removed from Retell.",
       });
       
       return true;
@@ -193,7 +207,7 @@ export const useAgents = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete agent",
+        description: error instanceof Error ? error.message : "Failed to delete agent",
       });
       return false;
     }

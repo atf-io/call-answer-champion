@@ -51,7 +51,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, agentId, limit = 100, area_code, nickname, inbound_agent_id, outbound_agent_id } = body;
+    const { action, agentId, limit = 100, area_code, nickname, inbound_agent_id, outbound_agent_id, agentConfig } = body;
     console.log(`Retell sync action: ${action} for user: ${user.id}`);
 
     let result;
@@ -71,6 +71,18 @@ serve(async (req) => {
 
       case "get-agent":
         result = await getRetellAgent(RETELL_API_KEY, agentId);
+        break;
+
+      case "create-agent":
+        result = await createRetellAgent(RETELL_API_KEY, supabase, user.id, agentConfig);
+        break;
+
+      case "update-agent":
+        result = await updateRetellAgent(RETELL_API_KEY, supabase, user.id, agentId, agentConfig);
+        break;
+
+      case "delete-agent":
+        result = await deleteRetellAgent(RETELL_API_KEY, supabase, user.id, agentId);
         break;
 
       case "sync-calls":
@@ -614,5 +626,368 @@ async function purchasePhoneNumber(
     phone_number_id: phoneData.phone_number_id,
     saved: savedPhone,
     message: `Successfully purchased ${phoneData.phone_number}`,
+  };
+}
+
+// Build Retell agent config from our database config
+function buildRetellAgentConfig(config: any) {
+  const retellConfig: any = {};
+
+  // Voice configuration
+  if (config.voice_id) {
+    retellConfig.voice_id = config.voice_id;
+  }
+  if (config.voice_model) {
+    retellConfig.voice_model = config.voice_model;
+  }
+  if (config.voice_temperature !== undefined && config.voice_temperature !== null) {
+    retellConfig.voice_temperature = config.voice_temperature;
+  }
+  if (config.voice_speed !== undefined && config.voice_speed !== null) {
+    retellConfig.voice_speed = config.voice_speed;
+  }
+  if (config.volume !== undefined && config.volume !== null) {
+    retellConfig.volume = config.volume;
+  }
+
+  // Behavior configuration
+  if (config.responsiveness !== undefined && config.responsiveness !== null) {
+    retellConfig.responsiveness = config.responsiveness;
+  }
+  if (config.interruption_sensitivity !== undefined && config.interruption_sensitivity !== null) {
+    retellConfig.interruption_sensitivity = config.interruption_sensitivity;
+  }
+  if (config.enable_backchannel !== undefined) {
+    retellConfig.enable_backchannel = config.enable_backchannel;
+  }
+  if (config.backchannel_frequency !== undefined && config.backchannel_frequency !== null) {
+    retellConfig.backchannel_frequency = config.backchannel_frequency;
+  }
+
+  // Ambient sound - only set if not "none"
+  if (config.ambient_sound && config.ambient_sound !== "none") {
+    retellConfig.ambient_sound = config.ambient_sound;
+    if (config.ambient_sound_volume !== undefined && config.ambient_sound_volume !== null) {
+      retellConfig.ambient_sound_volume = config.ambient_sound_volume;
+    }
+  }
+
+  // Language
+  if (config.language) {
+    retellConfig.language = config.language;
+  }
+
+  // Call timing configuration
+  if (config.begin_message_delay_ms !== undefined && config.begin_message_delay_ms !== null) {
+    retellConfig.begin_message_delay_ms = config.begin_message_delay_ms;
+  }
+  if (config.end_call_after_silence_ms !== undefined && config.end_call_after_silence_ms !== null) {
+    retellConfig.end_call_after_silence_ms = config.end_call_after_silence_ms;
+  }
+  if (config.max_call_duration_ms !== undefined && config.max_call_duration_ms !== null) {
+    retellConfig.max_call_duration_ms = config.max_call_duration_ms;
+  }
+
+  // Voicemail detection
+  if (config.enable_voicemail_detection !== undefined) {
+    retellConfig.enable_voicemail_detection = config.enable_voicemail_detection;
+    if (config.enable_voicemail_detection) {
+      if (config.voicemail_message) {
+        retellConfig.voicemail_message = config.voicemail_message;
+      }
+      if (config.voicemail_detection_timeout_ms !== undefined && config.voicemail_detection_timeout_ms !== null) {
+        retellConfig.voicemail_detection_timeout_ms = config.voicemail_detection_timeout_ms;
+      }
+    }
+  }
+
+  // Speech normalization
+  if (config.normalize_for_speech !== undefined) {
+    retellConfig.normalize_for_speech = config.normalize_for_speech;
+  }
+
+  // Boosted keywords
+  if (config.boosted_keywords && config.boosted_keywords.length > 0) {
+    retellConfig.boosted_keywords = config.boosted_keywords;
+  }
+
+  // Reminder configuration
+  if (config.reminder_trigger_ms !== undefined && config.reminder_trigger_ms !== null) {
+    retellConfig.reminder_trigger_ms = config.reminder_trigger_ms;
+  }
+  if (config.reminder_max_count !== undefined && config.reminder_max_count !== null) {
+    retellConfig.reminder_max_count = config.reminder_max_count;
+  }
+
+  // Agent name
+  if (config.name) {
+    retellConfig.agent_name = config.name;
+  }
+
+  return retellConfig;
+}
+
+async function createRetellAgent(
+  apiKey: string,
+  supabase: any,
+  userId: string,
+  agentConfig: any
+) {
+  console.log(`Creating Retell agent for user: ${userId}`);
+  console.log("Agent config:", JSON.stringify(agentConfig, null, 2));
+
+  // Build Retell API payload
+  const retellPayload = buildRetellAgentConfig(agentConfig);
+
+  // Retell requires a response engine - create a basic LLM
+  const llmResponse = await fetch(`${RETELL_BASE_URL}/create-retell-llm`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      general_prompt: `You are ${agentConfig.name || "an AI assistant"}. Your personality is ${agentConfig.personality || "friendly and professional"}. ${agentConfig.greeting_message ? `Start conversations with: "${agentConfig.greeting_message}"` : ""}`,
+      begin_message: agentConfig.greeting_message || "Hello! How can I help you today?",
+    }),
+  });
+
+  if (!llmResponse.ok) {
+    const errorText = await llmResponse.text();
+    console.error("Failed to create LLM:", errorText);
+    throw new Error(`Failed to create LLM: ${errorText}`);
+  }
+
+  const llmData = await llmResponse.json();
+  console.log("Created LLM:", llmData.llm_id);
+  
+  retellPayload.response_engine = {
+    type: "retell-llm",
+    llm_id: llmData.llm_id,
+  };
+
+  console.log("Creating Retell agent with payload:", JSON.stringify(retellPayload, null, 2));
+
+  // Create the voice agent in Retell
+  const response = await fetch(`${RETELL_BASE_URL}/create-voice-agent`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(retellPayload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to create Retell agent:", response.status, errorText);
+    throw new Error(`Failed to create Retell agent: ${errorText}`);
+  }
+
+  const retellAgent = await response.json();
+  console.log("Created Retell agent:", retellAgent.agent_id);
+
+  // Save to database with retell_agent_id
+  const { data: savedAgent, error: insertError } = await supabase
+    .from("ai_agents")
+    .insert({
+      user_id: userId,
+      retell_agent_id: retellAgent.agent_id,
+      name: agentConfig.name,
+      voice_type: agentConfig.voice_type || "Professional",
+      personality: agentConfig.personality,
+      greeting_message: agentConfig.greeting_message,
+      schedule_start: agentConfig.schedule_start,
+      schedule_end: agentConfig.schedule_end,
+      schedule_days: agentConfig.schedule_days,
+      voice_id: agentConfig.voice_id,
+      voice_model: agentConfig.voice_model,
+      voice_temperature: agentConfig.voice_temperature,
+      voice_speed: agentConfig.voice_speed,
+      volume: agentConfig.volume,
+      responsiveness: agentConfig.responsiveness,
+      interruption_sensitivity: agentConfig.interruption_sensitivity,
+      enable_backchannel: agentConfig.enable_backchannel,
+      backchannel_frequency: agentConfig.backchannel_frequency,
+      ambient_sound: agentConfig.ambient_sound === "none" ? null : agentConfig.ambient_sound,
+      ambient_sound_volume: agentConfig.ambient_sound_volume,
+      language: agentConfig.language,
+      enable_voicemail_detection: agentConfig.enable_voicemail_detection,
+      voicemail_message: agentConfig.voicemail_message,
+      voicemail_detection_timeout_ms: agentConfig.voicemail_detection_timeout_ms,
+      max_call_duration_ms: agentConfig.max_call_duration_ms,
+      end_call_after_silence_ms: agentConfig.end_call_after_silence_ms,
+      begin_message_delay_ms: agentConfig.begin_message_delay_ms,
+      normalize_for_speech: agentConfig.normalize_for_speech,
+      boosted_keywords: agentConfig.boosted_keywords,
+      reminder_trigger_ms: agentConfig.reminder_trigger_ms,
+      reminder_max_count: agentConfig.reminder_max_count,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error("Error saving agent:", insertError);
+    throw new Error(`Agent created in Retell but failed to save: ${insertError.message}`);
+  }
+
+  return {
+    success: true,
+    agent: savedAgent,
+    retell_agent_id: retellAgent.agent_id,
+    message: `Successfully created agent "${agentConfig.name}"`,
+  };
+}
+
+async function updateRetellAgent(
+  apiKey: string,
+  supabase: any,
+  userId: string,
+  dbAgentId: string,
+  agentConfig: any
+) {
+  console.log(`Updating Retell agent: ${dbAgentId} for user: ${userId}`);
+
+  // Get the existing agent to find the retell_agent_id
+  const { data: existingAgent, error: fetchError } = await supabase
+    .from("ai_agents")
+    .select("*")
+    .eq("id", dbAgentId)
+    .eq("user_id", userId)
+    .single();
+
+  if (fetchError || !existingAgent) {
+    throw new Error("Agent not found");
+  }
+
+  // If agent has a Retell ID, update it in Retell
+  if (existingAgent.retell_agent_id) {
+    const retellPayload = buildRetellAgentConfig(agentConfig);
+    
+    console.log("Updating Retell agent with payload:", JSON.stringify(retellPayload, null, 2));
+
+    const response = await fetch(`${RETELL_BASE_URL}/update-voice-agent/${existingAgent.retell_agent_id}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(retellPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to update Retell agent:", response.status, errorText);
+      console.log("Continuing with local database update...");
+    } else {
+      console.log("Retell agent updated successfully");
+    }
+  }
+
+  // Update in database
+  const { data: updatedAgent, error: updateError } = await supabase
+    .from("ai_agents")
+    .update({
+      name: agentConfig.name ?? existingAgent.name,
+      voice_type: agentConfig.voice_type ?? existingAgent.voice_type,
+      personality: agentConfig.personality ?? existingAgent.personality,
+      greeting_message: agentConfig.greeting_message ?? existingAgent.greeting_message,
+      schedule_start: agentConfig.schedule_start ?? existingAgent.schedule_start,
+      schedule_end: agentConfig.schedule_end ?? existingAgent.schedule_end,
+      schedule_days: agentConfig.schedule_days ?? existingAgent.schedule_days,
+      voice_id: agentConfig.voice_id ?? existingAgent.voice_id,
+      voice_model: agentConfig.voice_model ?? existingAgent.voice_model,
+      voice_temperature: agentConfig.voice_temperature ?? existingAgent.voice_temperature,
+      voice_speed: agentConfig.voice_speed ?? existingAgent.voice_speed,
+      volume: agentConfig.volume ?? existingAgent.volume,
+      responsiveness: agentConfig.responsiveness ?? existingAgent.responsiveness,
+      interruption_sensitivity: agentConfig.interruption_sensitivity ?? existingAgent.interruption_sensitivity,
+      enable_backchannel: agentConfig.enable_backchannel ?? existingAgent.enable_backchannel,
+      backchannel_frequency: agentConfig.backchannel_frequency ?? existingAgent.backchannel_frequency,
+      ambient_sound: (agentConfig.ambient_sound === "none" ? null : agentConfig.ambient_sound) ?? existingAgent.ambient_sound,
+      ambient_sound_volume: agentConfig.ambient_sound_volume ?? existingAgent.ambient_sound_volume,
+      language: agentConfig.language ?? existingAgent.language,
+      enable_voicemail_detection: agentConfig.enable_voicemail_detection ?? existingAgent.enable_voicemail_detection,
+      voicemail_message: agentConfig.voicemail_message ?? existingAgent.voicemail_message,
+      voicemail_detection_timeout_ms: agentConfig.voicemail_detection_timeout_ms ?? existingAgent.voicemail_detection_timeout_ms,
+      max_call_duration_ms: agentConfig.max_call_duration_ms ?? existingAgent.max_call_duration_ms,
+      end_call_after_silence_ms: agentConfig.end_call_after_silence_ms ?? existingAgent.end_call_after_silence_ms,
+      begin_message_delay_ms: agentConfig.begin_message_delay_ms ?? existingAgent.begin_message_delay_ms,
+      normalize_for_speech: agentConfig.normalize_for_speech ?? existingAgent.normalize_for_speech,
+      boosted_keywords: agentConfig.boosted_keywords ?? existingAgent.boosted_keywords,
+      reminder_trigger_ms: agentConfig.reminder_trigger_ms ?? existingAgent.reminder_trigger_ms,
+      reminder_max_count: agentConfig.reminder_max_count ?? existingAgent.reminder_max_count,
+      is_active: agentConfig.is_active ?? existingAgent.is_active,
+    })
+    .eq("id", dbAgentId)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error("Error updating agent:", updateError);
+    throw new Error(`Failed to update agent: ${updateError.message}`);
+  }
+
+  return {
+    success: true,
+    agent: updatedAgent,
+    message: `Successfully updated agent "${updatedAgent.name}"`,
+  };
+}
+
+async function deleteRetellAgent(
+  apiKey: string,
+  supabase: any,
+  userId: string,
+  dbAgentId: string
+) {
+  console.log(`Deleting Retell agent: ${dbAgentId} for user: ${userId}`);
+
+  // Get the existing agent to find the retell_agent_id
+  const { data: existingAgent, error: fetchError } = await supabase
+    .from("ai_agents")
+    .select("retell_agent_id, name")
+    .eq("id", dbAgentId)
+    .eq("user_id", userId)
+    .single();
+
+  if (fetchError || !existingAgent) {
+    throw new Error("Agent not found");
+  }
+
+  // If agent has a Retell ID, delete it from Retell
+  if (existingAgent.retell_agent_id) {
+    const response = await fetch(`${RETELL_BASE_URL}/delete-voice-agent/${existingAgent.retell_agent_id}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to delete Retell agent:", response.status, errorText);
+    } else {
+      console.log("Retell agent deleted successfully");
+    }
+  }
+
+  // Delete from database
+  const { error: deleteError } = await supabase
+    .from("ai_agents")
+    .delete()
+    .eq("id", dbAgentId)
+    .eq("user_id", userId);
+
+  if (deleteError) {
+    console.error("Error deleting agent:", deleteError);
+    throw new Error(`Failed to delete agent: ${deleteError.message}`);
+  }
+
+  return {
+    success: true,
+    message: `Successfully deleted agent "${existingAgent.name}"`,
   };
 }
