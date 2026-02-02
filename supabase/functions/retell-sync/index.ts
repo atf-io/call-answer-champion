@@ -1,3 +1,4 @@
+// Retell.ai sync edge function - v2 API
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -6,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const RETELL_BASE_URL = "https://api.retellai.com";
+const RETELL_BASE_URL = "https://api.retellai.com/v2";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -104,7 +105,7 @@ serve(async (req) => {
 
 async function listRetellAgents(apiKey: string) {
   console.log("Fetching Retell agents...");
-  const response = await fetch(`${RETELL_BASE_URL}/list-agents`, {
+  const response = await fetch(`${RETELL_BASE_URL}/list-voice-agent`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -124,7 +125,7 @@ async function listRetellAgents(apiKey: string) {
 
 async function getRetellAgent(apiKey: string, agentId: string) {
   console.log(`Fetching Retell agent: ${agentId}`);
-  const response = await fetch(`${RETELL_BASE_URL}/get-agent/${agentId}`, {
+  const response = await fetch(`${RETELL_BASE_URL}/get-voice-agent/${agentId}`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
