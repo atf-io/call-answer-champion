@@ -430,7 +430,8 @@ function formatDuration(seconds: number): string {
 
 async function listPhoneNumbers(apiKey: string) {
   console.log("Fetching Retell phone numbers...");
-  const response = await fetch(`${RETELL_BASE_URL}/list-phone-numbers`, {
+  // v2 API uses singular endpoint name: list-phone-number
+  const response = await fetch(`${RETELL_BASE_URL}/list-phone-number`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
