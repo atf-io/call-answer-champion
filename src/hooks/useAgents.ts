@@ -19,6 +19,29 @@ export interface Agent {
   satisfaction_score: number;
   created_at: string;
   updated_at: string;
+  // Retell voice agent configuration
+  voice_id: string | null;
+  voice_model: string | null;
+  voice_temperature: number | null;
+  voice_speed: number | null;
+  volume: number | null;
+  responsiveness: number | null;
+  interruption_sensitivity: number | null;
+  enable_backchannel: boolean | null;
+  backchannel_frequency: number | null;
+  ambient_sound: string | null;
+  ambient_sound_volume: number | null;
+  language: string | null;
+  enable_voicemail_detection: boolean | null;
+  voicemail_message: string | null;
+  voicemail_detection_timeout_ms: number | null;
+  max_call_duration_ms: number | null;
+  end_call_after_silence_ms: number | null;
+  begin_message_delay_ms: number | null;
+  normalize_for_speech: boolean | null;
+  boosted_keywords: string[] | null;
+  reminder_trigger_ms: number | null;
+  reminder_max_count: number | null;
 }
 
 export interface CreateAgentData {
@@ -29,6 +52,29 @@ export interface CreateAgentData {
   schedule_start?: string;
   schedule_end?: string;
   schedule_days?: string[];
+  // Retell voice agent configuration
+  voice_id?: string;
+  voice_model?: string;
+  voice_temperature?: number;
+  voice_speed?: number;
+  volume?: number;
+  responsiveness?: number;
+  interruption_sensitivity?: number;
+  enable_backchannel?: boolean;
+  backchannel_frequency?: number;
+  ambient_sound?: string;
+  ambient_sound_volume?: number;
+  language?: string;
+  enable_voicemail_detection?: boolean;
+  voicemail_message?: string;
+  voicemail_detection_timeout_ms?: number;
+  max_call_duration_ms?: number;
+  end_call_after_silence_ms?: number;
+  begin_message_delay_ms?: number;
+  normalize_for_speech?: boolean;
+  boosted_keywords?: string[];
+  reminder_trigger_ms?: number;
+  reminder_max_count?: number;
 }
 
 export const useAgents = () => {
