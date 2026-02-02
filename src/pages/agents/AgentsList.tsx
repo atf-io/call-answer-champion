@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, RefreshCw, Activity, CircleDot, Settings } from "lucide-react";
+import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { Switch } from "@/components/ui/switch";
@@ -37,10 +37,11 @@ const agentTypes = [
 
 const AgentsList = () => {
   const navigate = useNavigate();
-  const { agents, loading, toggleAgentStatus, refetch } = useAgents();
+  const { agents, loading, toggleAgentStatus, updateAgent, refetch } = useAgents();
   const { liveCalls, fetchLiveStatus, fetchAgents: fetchRetellAgents, loading: retellLoading } = useRetell();
   const [selectedAgentType, setSelectedAgentType] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [syncingAgentId, setSyncingAgentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLiveStatus();
@@ -58,6 +59,15 @@ const AgentsList = () => {
     setIsCreateOpen(false);
     setSelectedAgentType(null);
     refetch();
+  };
+
+  const handleSyncToRetell = async (agentId: string) => {
+    setSyncingAgentId(agentId);
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) {
+      await updateAgent(agentId, { name: agent.name }); // Trigger sync by updating
+    }
+    setSyncingAgentId(null);
   };
 
   const formatDuration = (seconds: number | null): string => {
@@ -191,15 +201,31 @@ const AgentsList = () => {
                           <p className="text-xs text-muted-foreground">Happy</p>
                         </div>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full mt-3"
-                        onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Edit Settings
-                      </Button>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
+                        >
+                          <Settings className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleSyncToRetell(agent.id)}
+                          disabled={syncingAgentId === agent.id}
+                        >
+                          {syncingAgentId === agent.id ? (
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                          )}
+                          Sync
+                        </Button>
+                      </div>
                       {agent.retell_agent_id && (
                         <p className="text-xs text-muted-foreground mt-2 truncate">
                           Retell ID: {agent.retell_agent_id}
