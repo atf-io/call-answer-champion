@@ -82,6 +82,14 @@ serve(async (req) => {
         result = await getLiveCallStatus(RETELL_API_KEY);
         break;
 
+      case "list-phone-numbers":
+        result = await listPhoneNumbers(RETELL_API_KEY);
+        break;
+
+      case "sync-phone-numbers":
+        result = await syncPhoneNumbers(RETELL_API_KEY, supabase, user.id);
+        break;
+
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action" }),
@@ -418,4 +426,89 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+async function listPhoneNumbers(apiKey: string) {
+  console.log("Fetching Retell phone numbers...");
+  const response = await fetch(`${RETELL_BASE_URL}/list-phone-numbers`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Retell API error:", response.status, errorText);
+    throw new Error(`Failed to fetch phone numbers: ${response.status}`);
+  }
+
+  const phoneNumbers = await response.json();
+  console.log(`Found ${phoneNumbers.length} phone numbers`);
+  return { phoneNumbers };
+}
+
+async function syncPhoneNumbers(apiKey: string, supabase: any, userId: string) {
+  console.log(`Syncing phone numbers for user: ${userId}`);
+  
+  // Fetch phone numbers from Retell
+  const { phoneNumbers } = await listPhoneNumbers(apiKey);
+
+  // Get existing phone number IDs to check for updates
+  const { data: existingNumbers } = await supabase
+    .from("phone_numbers")
+    .select("id, retell_phone_number_id")
+    .eq("user_id", userId);
+
+  const existingMap = new Map(existingNumbers?.map((n: any) => [n.retell_phone_number_id, n.id]) || []);
+
+  // Get user's agents to map retell_agent_id to our agent_id
+  const { data: userAgents } = await supabase
+    .from("ai_agents")
+    .select("id, retell_agent_id")
+    .eq("user_id", userId);
+
+  const agentMap = new Map(userAgents?.map((a: any) => [a.retell_agent_id, a.id]) || []);
+
+  let synced = 0;
+  let updated = 0;
+
+  for (const phone of phoneNumbers) {
+    const phoneData = {
+      user_id: userId,
+      retell_phone_number_id: phone.phone_number_id,
+      phone_number: phone.phone_number,
+      nickname: phone.nickname || null,
+      area_code: phone.area_code || null,
+      inbound_agent_id: agentMap.get(phone.inbound_agent_id) || null,
+      outbound_agent_id: agentMap.get(phone.outbound_agent_id) || null,
+      is_active: true,
+      last_synced_at: new Date().toISOString(),
+    };
+
+    if (existingMap.has(phone.phone_number_id)) {
+      // Update existing
+      const { error } = await supabase
+        .from("phone_numbers")
+        .update(phoneData)
+        .eq("id", existingMap.get(phone.phone_number_id));
+      
+      if (!error) updated++;
+    } else {
+      // Insert new
+      const { error } = await supabase
+        .from("phone_numbers")
+        .insert(phoneData);
+      
+      if (!error) synced++;
+    }
+  }
+
+  console.log(`Synced ${synced} new, updated ${updated} phone numbers`);
+  return { 
+    synced, 
+    updated,
+    total: phoneNumbers.length,
+    message: `Synced ${synced} new and updated ${updated} phone numbers` 
+  };
 }
