@@ -225,6 +225,16 @@ async function syncCallsToDatabase(
 
   const agentMap = new Map(userAgents?.map((a: any) => [a.retell_agent_id, a.id]) || []);
 
+  // Helper to normalize sentiment to lowercase (constraint requires: positive, neutral, negative)
+  const normalizeSentiment = (sentiment: string | null | undefined): string | null => {
+    if (!sentiment) return null;
+    const lower = sentiment.toLowerCase();
+    if (['positive', 'neutral', 'negative'].includes(lower)) {
+      return lower;
+    }
+    return null; // Unknown sentiment values become null
+  };
+
   // Prepare new calls for insertion
   const newCalls = calls
     .filter((call: any) => !existingIds.has(call.call_id))
@@ -236,7 +246,7 @@ async function syncCallsToDatabase(
       duration_seconds: Math.round((call.end_timestamp - call.start_timestamp) / 1000) || 0,
       status: call.call_status || "completed",
       transcript: call.transcript || null,
-      sentiment: call.call_analysis?.user_sentiment || null,
+      sentiment: normalizeSentiment(call.call_analysis?.user_sentiment),
       created_at: new Date(call.start_timestamp).toISOString(),
     }));
 
