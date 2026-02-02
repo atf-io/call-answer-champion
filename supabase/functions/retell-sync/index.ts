@@ -7,7 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const RETELL_BASE_URL = "https://api.retellai.com/v2";
+// Retell has different base URLs for different endpoints
+const RETELL_BASE_URL = "https://api.retellai.com/v2"; // For calls, agents
+const RETELL_BASE_URL_V1 = "https://api.retellai.com"; // For phone numbers and other resources
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -430,8 +432,8 @@ function formatDuration(seconds: number): string {
 
 async function listPhoneNumbers(apiKey: string) {
   console.log("Fetching Retell phone numbers...");
-  // v2 API uses singular endpoint name: list-phone-number
-  const response = await fetch(`${RETELL_BASE_URL}/list-phone-number`, {
+  // Phone numbers API uses base URL without /v2 prefix
+  const response = await fetch(`${RETELL_BASE_URL_V1}/list-phone-numbers`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
