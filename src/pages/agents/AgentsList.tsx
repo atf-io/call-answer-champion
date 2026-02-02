@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, RefreshCw, Activity, CircleDot } from "lucide-react";
+import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, RefreshCw, Activity, CircleDot, Settings } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { Switch } from "@/components/ui/switch";
@@ -35,6 +36,7 @@ const agentTypes = [
 ];
 
 const AgentsList = () => {
+  const navigate = useNavigate();
   const { agents, loading, toggleAgentStatus, refetch } = useAgents();
   const { liveCalls, fetchLiveStatus, fetchAgents: fetchRetellAgents, loading: retellLoading } = useRetell();
   const [selectedAgentType, setSelectedAgentType] = useState<string | null>(null);
@@ -189,8 +191,17 @@ const AgentsList = () => {
                           <p className="text-xs text-muted-foreground">Happy</p>
                         </div>
                       </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full mt-3"
+                        onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Edit Settings
+                      </Button>
                       {agent.retell_agent_id && (
-                        <p className="text-xs text-muted-foreground mt-3 truncate">
+                        <p className="text-xs text-muted-foreground mt-2 truncate">
                           Retell ID: {agent.retell_agent_id}
                         </p>
                       )}

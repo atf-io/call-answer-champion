@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 
 // Agent Admin Pages
 import AgentsList from "./pages/agents/AgentsList";
+import AgentEdit from "./pages/agents/AgentEdit";
 import KnowledgeBase from "./pages/agents/KnowledgeBase";
 import PhoneNumbers from "./pages/agents/PhoneNumbers";
 import BatchCall from "./pages/agents/BatchCall";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/agents" element={<AgentsList />} />
+            <Route path="/dashboard/agents/:agentId/edit" element={<AgentEdit />} />
             <Route path="/dashboard/agents/knowledge" element={<KnowledgeBase />} />
             <Route path="/dashboard/agents/phone-numbers" element={<PhoneNumbers />} />
             <Route path="/dashboard/agents/batch-call" element={<BatchCall />} />
