@@ -26,7 +26,7 @@ pattern = "**/{*.ts,*.tsx}"
 start = "typescript-language-server --stdio"
 
 [deployment]
-run = ["node", "./dist/index.cjs"]
+run = ["bash", "-c", "NODE_ENV=production node --import tsx server/index.ts"]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 
