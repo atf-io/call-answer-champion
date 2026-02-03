@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -20,70 +20,43 @@ interface PhoneNumber {
 
 export const usePhoneNumbers = () => {
   const { user } = useAuth();
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchPhoneNumbers = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      const data = await api.get<PhoneNumber[]>("/api/phone-numbers");
-      setPhoneNumbers(data || []);
-    } catch (error) {
-      console.error("Error fetching phone numbers:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const { data: phoneNumbers = [], isLoading: loading } = useQuery({
+    queryKey: ['phone-numbers'],
+    queryFn: () => api.get<PhoneNumber[]>("/api/phone-numbers"),
+    enabled: !!user,
+  });
 
-  const syncPhoneNumbers = async () => {
-    if (!user) return;
-    
-    try {
-      setSyncing(true);
-      const data = await api.post<{ message: string }>("/api/retell-sync", {
-        action: "sync-phone-numbers",
-      });
-      
+  const syncMutation = useMutation({
+    mutationFn: () => api.post<{ message: string }>("/api/retell-sync", { action: "sync-phone-numbers" }),
+    onSuccess: (data) => {
       toast.success(data.message || "Phone numbers synced successfully");
-      await fetchPhoneNumbers();
-      return data;
-    } catch (error) {
-      console.error("Error syncing phone numbers:", error);
+      queryClient.invalidateQueries({ queryKey: ['phone-numbers'] });
+    },
+    onError: () => {
       toast.error("Failed to sync phone numbers from Retell");
-      throw error;
-    } finally {
-      setSyncing(false);
-    }
-  };
+    },
+  });
 
-  const purchasePhoneNumber = async (options: {
-    area_code?: string;
-    nickname?: string;
-    inbound_agent_id?: string;
-    outbound_agent_id?: string;
-  }) => {
-    if (!user) return;
-    
-    try {
-      setPurchasing(true);
-      const data = await api.post<{ message: string }>("/api/retell-sync", {
-        action: "purchase-phone-number",
-        area_code: options.area_code,
-        nickname: options.nickname,
-        inbound_agent_id: options.inbound_agent_id === "none" ? undefined : options.inbound_agent_id,
-        outbound_agent_id: options.outbound_agent_id === "none" ? undefined : options.outbound_agent_id,
-      });
-      
+  const purchaseMutation = useMutation({
+    mutationFn: (options: {
+      area_code?: string;
+      nickname?: string;
+      inbound_agent_id?: string;
+      outbound_agent_id?: string;
+    }) => api.post<{ message: string }>("/api/retell-sync", {
+      action: "purchase-phone-number",
+      area_code: options.area_code,
+      nickname: options.nickname,
+      inbound_agent_id: options.inbound_agent_id === "none" ? undefined : options.inbound_agent_id,
+      outbound_agent_id: options.outbound_agent_id === "none" ? undefined : options.outbound_agent_id,
+    }),
+    onSuccess: (data) => {
       toast.success(data.message || "Phone number purchased successfully!");
-      await fetchPhoneNumbers();
-      return data;
-    } catch (error) {
-      console.error("Error purchasing phone number:", error);
-      
+      queryClient.invalidateQueries({ queryKey: ['phone-numbers'] });
+    },
+    onError: (error) => {
       let errorMessage = "Failed to purchase phone number";
       if (error instanceof Error) {
         const msg = error.message;
@@ -95,25 +68,40 @@ export const usePhoneNumbers = () => {
           errorMessage = msg;
         }
       }
-      
       toast.error(errorMessage);
+    },
+  });
+
+  const syncPhoneNumbers = async () => {
+    if (!user) return;
+    try {
+      return await syncMutation.mutateAsync();
+    } catch (error) {
       throw error;
-    } finally {
-      setPurchasing(false);
     }
   };
 
-  useEffect(() => {
-    fetchPhoneNumbers();
-  }, [fetchPhoneNumbers]);
+  const purchasePhoneNumber = async (options: {
+    area_code?: string;
+    nickname?: string;
+    inbound_agent_id?: string;
+    outbound_agent_id?: string;
+  }) => {
+    if (!user) return;
+    try {
+      return await purchaseMutation.mutateAsync(options);
+    } catch (error) {
+      throw error;
+    }
+  };
 
   return {
     phoneNumbers,
     loading,
-    syncing,
-    purchasing,
+    syncing: syncMutation.isPending,
+    purchasing: purchaseMutation.isPending,
     syncPhoneNumbers,
     purchasePhoneNumber,
-    refetch: fetchPhoneNumbers,
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['phone-numbers'] }),
   };
 };

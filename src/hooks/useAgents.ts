@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -76,114 +76,111 @@ export interface CreateAgentData {
 }
 
 export const useAgents = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchAgents = async () => {
-    if (!user) return;
-    
-    try {
-      const data = await api.get<Agent[]>("/api/agents");
-      setAgents(data || []);
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load agents",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: agents = [], isLoading: loading } = useQuery({
+    queryKey: ['agents'],
+    queryFn: () => api.get<Agent[]>("/api/agents"),
+    enabled: !!user,
+  });
 
-  const createAgent = async (agentData: CreateAgentData) => {
-    if (!user) return null;
-
-    try {
+  const createMutation = useMutation({
+    mutationFn: async (agentData: CreateAgentData) => {
       const data = await api.post<{ agent: Agent }>("/api/retell-sync", {
         action: "create-agent",
         agentConfig: agentData,
       });
-      
-      if (data?.agent) {
-        setAgents((prev) => [data.agent, ...prev]);
-        toast({
-          title: "Agent Created",
-          description: `${agentData.name} has been created and synced to Retell.`,
-        });
-        return data.agent;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error("Error creating agent:", error);
+      return data.agent;
+    },
+    onSuccess: (agent, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      toast({
+        title: "Agent Created",
+        description: `${variables.name} has been created and synced to Retell.`,
+      });
+    },
+    onError: (error) => {
       toast({
         variant: "destructive",
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create agent",
       });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Agent> }) => {
+      const data = await api.post<{ agent: Agent }>("/api/retell-sync", {
+        action: "update-agent",
+        agentId: id,
+        agentConfig: updates,
+      });
+      return data.agent;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      toast({
+        title: "Agent Updated",
+        description: "Agent settings have been saved and synced to Retell.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update agent",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post("/api/retell-sync", {
+        action: "delete-agent",
+        agentId: id,
+      });
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      toast({
+        title: "Agent Deleted",
+        description: "Agent has been removed from Retell.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete agent",
+      });
+    },
+  });
+
+  const createAgent = async (agentData: CreateAgentData) => {
+    if (!user) return null;
+    try {
+      return await createMutation.mutateAsync(agentData);
+    } catch {
       return null;
     }
   };
 
   const updateAgent = async (id: string, updates: Partial<Agent>) => {
     try {
-      const data = await api.post<{ agent: Agent }>("/api/retell-sync", {
-        action: "update-agent",
-        agentId: id,
-        agentConfig: updates,
-      });
-      
-      if (data?.agent) {
-        setAgents((prev) =>
-          prev.map((agent) => (agent.id === id ? data.agent : agent))
-        );
-        
-        toast({
-          title: "Agent Updated",
-          description: "Agent settings have been saved and synced to Retell.",
-        });
-        
-        return data.agent;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error("Error updating agent:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update agent",
-      });
+      return await updateMutation.mutateAsync({ id, updates });
+    } catch {
       return null;
     }
   };
 
   const deleteAgent = async (id: string) => {
     try {
-      await api.post("/api/retell-sync", {
-        action: "delete-agent",
-        agentId: id,
-      });
-      
-      setAgents((prev) => prev.filter((agent) => agent.id !== id));
-      
-      toast({
-        title: "Agent Deleted",
-        description: "Agent has been removed from Retell.",
-      });
-      
+      await deleteMutation.mutateAsync(id);
       return true;
-    } catch (error) {
-      console.error("Error deleting agent:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete agent",
-      });
+    } catch {
       return false;
     }
   };
@@ -192,10 +189,6 @@ export const useAgents = () => {
     return updateAgent(id, { isActive });
   };
 
-  useEffect(() => {
-    fetchAgents();
-  }, [user]);
-
   return {
     agents,
     loading,
@@ -203,6 +196,6 @@ export const useAgents = () => {
     updateAgent,
     deleteAgent,
     toggleAgentStatus,
-    refetch: fetchAgents,
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
   };
 };

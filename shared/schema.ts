@@ -176,3 +176,21 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type KnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferSelect;
 export type PhoneNumber = typeof phoneNumbers.$inferSelect;
+
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAgentSchema = createInsertSchema(aiAgents).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertKnowledgeBaseSchema = createInsertSchema(knowledgeBaseEntries).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPhoneNumberSchema = createInsertSchema(phoneNumbers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSettingsSchema = createInsertSchema(userSettings).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateProfileSchema = insertProfileSchema.partial().omit({ userId: true });
+export const updateAgentSchema = insertAgentSchema.partial().omit({ userId: true });
+export const updateReviewSchema = insertReviewSchema.partial().omit({ userId: true });
+export const updateKnowledgeBaseSchema = insertKnowledgeBaseSchema.partial().omit({ userId: true });
+export const updatePhoneNumberSchema = insertPhoneNumberSchema.partial().omit({ userId: true });
+export const updateSettingsSchema = insertSettingsSchema.partial().omit({ userId: true });

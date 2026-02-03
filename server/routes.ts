@@ -1,5 +1,15 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
+import { 
+  updateProfileSchema, 
+  updateAgentSchema, 
+  updateReviewSchema, 
+  updateKnowledgeBaseSchema,
+  updateSettingsSchema,
+  insertAgentSchema,
+  insertKnowledgeBaseSchema
+} from "../shared/schema";
+import { z } from "zod";
 
 const RETELL_BASE_URL = "https://api.retellai.com";
 const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v1";
@@ -57,7 +67,11 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/profile", requireAuth, async (req, res) => {
     try {
-      const profile = await storage.updateProfile(req.user!.id, req.body);
+      const parsed = updateProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid profile data", details: parsed.error.flatten() });
+      }
+      const profile = await storage.updateProfile(req.user!.id, parsed.data);
       res.json(profile);
     } catch (error) {
       res.status(500).json({ error: "Failed to update profile" });
@@ -88,7 +102,11 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/agents", requireAuth, async (req, res) => {
     try {
-      const agent = await storage.createAgent({ userId: req.user!.id, ...req.body });
+      const parsed = insertAgentSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid agent data", details: parsed.error.flatten() });
+      }
+      const agent = await storage.createAgent({ userId: req.user!.id, ...parsed.data });
       res.json(agent);
     } catch (error) {
       res.status(500).json({ error: "Failed to create agent" });
@@ -97,7 +115,11 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/agents/:id", requireAuth, async (req, res) => {
     try {
-      const agent = await storage.updateAgent(req.params.id as string, req.user!.id, req.body);
+      const parsed = updateAgentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid agent data", details: parsed.error.flatten() });
+      }
+      const agent = await storage.updateAgent(req.params.id as string, req.user!.id, parsed.data);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
@@ -155,7 +177,11 @@ export function registerRoutes(app: Express) {
 
   app.post("/api/knowledge-base", requireAuth, async (req, res) => {
     try {
-      const entry = await storage.createKnowledgeBaseEntry({ userId: req.user!.id, ...req.body });
+      const parsed = insertKnowledgeBaseSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid knowledge base data", details: parsed.error.flatten() });
+      }
+      const entry = await storage.createKnowledgeBaseEntry({ userId: req.user!.id, ...parsed.data });
       res.json(entry);
     } catch (error) {
       res.status(500).json({ error: "Failed to create knowledge base entry" });
@@ -164,7 +190,11 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/knowledge-base/:id", requireAuth, async (req, res) => {
     try {
-      const entry = await storage.updateKnowledgeBaseEntry(req.params.id as string, req.user!.id, req.body);
+      const parsed = updateKnowledgeBaseSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid knowledge base data", details: parsed.error.flatten() });
+      }
+      const entry = await storage.updateKnowledgeBaseEntry(req.params.id as string, req.user!.id, parsed.data);
       if (!entry) {
         return res.status(404).json({ error: "Entry not found" });
       }
@@ -250,7 +280,11 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/reviews/:id", requireAuth, async (req, res) => {
     try {
-      const review = await storage.updateReview(req.params.id as string, req.user!.id, req.body);
+      const parsed = updateReviewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid review data", details: parsed.error.flatten() });
+      }
+      const review = await storage.updateReview(req.params.id as string, req.user!.id, parsed.data);
       if (!review) {
         return res.status(404).json({ error: "Review not found" });
       }
@@ -275,11 +309,15 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/settings", requireAuth, async (req, res) => {
     try {
+      const parsed = updateSettingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid settings data", details: parsed.error.flatten() });
+      }
       let settings = await storage.getSettings(req.user!.id);
       if (!settings) {
-        settings = await storage.createSettings({ userId: req.user!.id, ...req.body });
+        settings = await storage.createSettings({ userId: req.user!.id, ...parsed.data });
       } else {
-        settings = await storage.updateSettings(req.user!.id, req.body);
+        settings = await storage.updateSettings(req.user!.id, parsed.data);
       }
       res.json(settings);
     } catch (error) {

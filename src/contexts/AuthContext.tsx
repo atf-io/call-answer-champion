@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
+      // Use email as both username and email for registration
       const { user } = await auth.register(email, password, email, fullName);
       setUser(user);
       return { error: null };
@@ -57,6 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Use email as username for login (email is stored as username)
       const { user } = await auth.login(email, password);
       setUser(user);
       return { error: null };
