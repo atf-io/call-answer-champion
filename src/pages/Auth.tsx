@@ -2,136 +2,43 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Phone, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { z } from "zod";
-
-const emailSchema = z.string().email("Please enter a valid email address");
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+import { Phone, Loader2 } from "lucide-react";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { signIn, signUp, user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (user) {
-        // Check if user has completed onboarding
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("user_id", user.id)
-          .single();
-
-        if (profile?.onboarding_completed) {
-          navigate("/dashboard");
-        } else {
+        // Check if user has completed onboarding by fetching profile
+        try {
+          const response = await fetch("/api/profile", { credentials: "include" });
+          if (response.ok) {
+            const profile = await response.json();
+            if (profile?.onboarding_completed) {
+              navigate("/dashboard");
+            } else {
+              navigate("/onboarding");
+            }
+          } else {
+            navigate("/onboarding");
+          }
+        } catch {
           navigate("/onboarding");
         }
       }
     };
 
-    checkOnboardingStatus();
-  }, [user, navigate]);
-
-  const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    
-    try {
-      emailSchema.parse(email);
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.email = e.errors[0].message;
-      }
+    if (!authLoading) {
+      checkOnboardingStatus();
     }
-    
-    try {
-      passwordSchema.parse(password);
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.password = e.errors[0].message;
-      }
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  }, [user, authLoading, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
+  const handleSignIn = () => {
     setLoading(true);
-    
-    try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast({
-              variant: "destructive",
-              title: "Login Failed",
-              description: "Invalid email or password. Please try again.",
-            });
-          } else if (error.message.includes("Email not confirmed")) {
-            toast({
-              variant: "destructive",
-              title: "Email Not Verified",
-              description: "Please check your email and verify your account before logging in.",
-            });
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Login Failed",
-              description: error.message,
-            });
-          }
-        } else {
-          // Login successful - onboarding check will happen in useEffect
-        }
-      } else {
-        const { error } = await signUp(email, password);
-        if (error) {
-          if (error.message.includes("User already registered")) {
-            toast({
-              variant: "destructive",
-              title: "Sign Up Failed",
-              description: "This email is already registered. Please login instead.",
-            });
-          } else {
-            toast({
-              variant: "destructive",
-              title: "Sign Up Failed",
-              description: error.message,
-            });
-          }
-        } else {
-          toast({
-            title: "Account Created!",
-            description: "Please check your email to verify your account before logging in.",
-          });
-          setIsLogin(true);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = () => {
-    setGoogleLoading(true);
     window.location.href = "/api/login";
   };
 
@@ -153,89 +60,21 @@ const Auth = () => {
         {/* Auth Card */}
         <div className="glass rounded-2xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">
-              {isLogin ? "Welcome Back" : "Create Account"}
-            </h1>
+            <h1 className="text-2xl font-bold mb-2">Welcome</h1>
             <p className="text-muted-foreground">
-              {isLogin 
-                ? "Sign in to access your dashboard" 
-                : "Get started with VoiceHub today"}
+              Sign in to access your dashboard
             </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 bg-muted/50 border-border"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-12 bg-muted/50 border-border"
-                />
-              </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
-
-            <Button 
-              type="submit" 
-              variant="hero" 
-              className="w-full" 
-              size="lg"
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </Button>
-          </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-            </div>
           </div>
 
           <Button
             type="button"
-            variant="outline"
+            variant="hero"
             className="w-full h-12"
-            onClick={handleGoogleSignIn}
-            disabled={googleLoading}
-            data-testid="button-google-signin"
+            onClick={handleSignIn}
+            disabled={loading}
+            data-testid="button-signin"
           >
-            {googleLoading ? (
+            {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
@@ -262,17 +101,9 @@ const Auth = () => {
             )}
           </Button>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"}
-            </button>
-          </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Sign in with your Google account to get started
+          </p>
         </div>
 
         {/* Back to Home */}
