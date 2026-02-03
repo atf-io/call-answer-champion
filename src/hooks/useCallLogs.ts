@@ -1,19 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export interface CallLog {
   id: string;
-  user_id: string;
-  agent_id: string | null;
-  retell_call_id: string | null;
-  caller_number: string | null;
-  duration_seconds: number | null;
+  userId: number;
+  agentId: string | null;
+  retellCallId: string | null;
+  callerNumber: string | null;
+  durationSeconds: number | null;
   status: string | null;
   transcript: string | null;
   sentiment: string | null;
-  created_at: string;
+  createdAt: string;
   agent?: {
     name: string;
   };
@@ -36,23 +36,11 @@ export const useCallLogs = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("call_logs")
-        .select(`
-          *,
-          agent:ai_agents(name)
-        `)
-        .order("created_at", { ascending: false })
-        .limit(100);
+      const logs = await api.get<CallLog[]>("/api/call-logs");
+      setCallLogs(logs || []);
 
-      if (error) throw error;
-
-      const logs = (data || []) as unknown as CallLog[];
-      setCallLogs(logs);
-
-      // Calculate stats
       const totalCalls = logs.length;
-      const totalDuration = logs.reduce((acc, log) => acc + (log.duration_seconds || 0), 0);
+      const totalDuration = logs.reduce((acc, log) => acc + (log.durationSeconds || 0), 0);
       const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
 
       const positiveCount = logs.filter(log => 

@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Review {
   id: string;
-  google_review_id: string | null;
-  author_name: string;
-  author_photo_url: string | null;
+  googleReviewId: string | null;
+  authorName: string;
+  authorPhotoUrl: string | null;
   rating: number;
-  review_text: string | null;
-  review_date: string;
-  response_text: string | null;
-  response_date: string | null;
+  reviewText: string | null;
+  reviewDate: string;
+  responseText: string | null;
+  responseDate: string | null;
   status: "pending" | "responded" | "ignored";
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const useReviews = () => {
@@ -28,13 +28,8 @@ export const useReviews = () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("*")
-        .order("review_date", { ascending: false });
-
-      if (error) throw error;
-      setReviews((data || []) as Review[]);
+      const data = await api.get<Review[]>("/api/reviews");
+      setReviews(data || []);
     } catch (error) {
       console.error("Error fetching reviews:", error);
       toast({
@@ -49,21 +44,14 @@ export const useReviews = () => {
 
   const respondToReview = async (id: string, responseText: string) => {
     try {
-      const { data, error } = await supabase
-        .from("reviews")
-        .update({
-          response_text: responseText,
-          response_date: new Date().toISOString(),
-          status: "responded",
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await api.patch<Review>(`/api/reviews/${id}`, {
+        responseText,
+        responseDate: new Date().toISOString(),
+        status: "responded",
+      });
       
       setReviews((prev) =>
-        prev.map((review) => (review.id === id ? (data as Review) : review))
+        prev.map((review) => (review.id === id ? data : review))
       );
       
       toast({
@@ -85,17 +73,10 @@ export const useReviews = () => {
 
   const ignoreReview = async (id: string) => {
     try {
-      const { data, error } = await supabase
-        .from("reviews")
-        .update({ status: "ignored" })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await api.patch<Review>(`/api/reviews/${id}`, { status: "ignored" });
       
       setReviews((prev) =>
-        prev.map((review) => (review.id === id ? (data as Review) : review))
+        prev.map((review) => (review.id === id ? data : review))
       );
       
       return data;

@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export interface UserSettings {
   id: string;
-  retell_api_key_configured: boolean;
-  google_api_configured: boolean;
-  notification_email: boolean;
-  notification_sms: boolean;
-  auto_respond_reviews: boolean;
-  review_response_tone: string;
+  retellApiKeyConfigured: boolean;
+  googleApiConfigured: boolean;
+  notificationEmail: boolean;
+  notificationSms: boolean;
+  autoRespondReviews: boolean;
+  reviewResponseTone: string;
   timezone: string;
 }
 
 export interface UserProfile {
   id: string;
   email: string | null;
-  full_name: string | null;
-  company_name: string | null;
-  avatar_url: string | null;
+  fullName: string | null;
+  companyName: string | null;
+  avatarUrl: string | null;
 }
 
 export const useSettings = () => {
@@ -34,19 +34,12 @@ export const useSettings = () => {
     
     try {
       const [settingsRes, profileRes] = await Promise.all([
-        supabase.from("user_settings").select("*").single(),
-        supabase.from("profiles").select("*").single(),
+        api.get<UserSettings>("/api/settings").catch(() => null),
+        api.get<UserProfile>("/api/profile").catch(() => null),
       ]);
 
-      if (settingsRes.error && settingsRes.error.code !== "PGRST116") {
-        throw settingsRes.error;
-      }
-      if (profileRes.error && profileRes.error.code !== "PGRST116") {
-        throw profileRes.error;
-      }
-
-      setSettings(settingsRes.data as UserSettings | null);
-      setProfile(profileRes.data as UserProfile | null);
+      setSettings(settingsRes);
+      setProfile(profileRes);
     } catch (error) {
       console.error("Error fetching settings:", error);
     } finally {
@@ -58,16 +51,9 @@ export const useSettings = () => {
     if (!user) return null;
 
     try {
-      const { data, error } = await supabase
-        .from("user_settings")
-        .update(updates)
-        .eq("user_id", user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await api.patch<UserSettings>("/api/settings", updates);
       
-      setSettings(data as UserSettings);
+      setSettings(data);
       toast({
         title: "Settings Updated",
         description: "Your settings have been saved.",
@@ -89,16 +75,9 @@ export const useSettings = () => {
     if (!user) return null;
 
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("user_id", user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await api.patch<UserProfile>("/api/profile", updates);
       
-      setProfile(data as UserProfile);
+      setProfile(data);
       toast({
         title: "Profile Updated",
         description: "Your profile has been saved.",

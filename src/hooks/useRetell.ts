@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,38 +53,21 @@ export const useRetell = () => {
   const [calls, setCalls] = useState<RetellCall[]>([]);
   const [analytics, setAnalytics] = useState<RetellAnalytics | null>(null);
   const [liveCalls, setLiveCalls] = useState<LiveCall[]>([]);
-  const { session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const invokeRetellSync = useCallback(async (action: string, params: Record<string, any> = {}) => {
-    if (!session?.access_token) {
+    if (!user) {
       throw new Error("Not authenticated");
     }
 
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/retell-sync`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action, ...params }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to call Retell sync");
-    }
-
-    return response.json();
-  }, [session]);
+    return api.post("/api/retell-sync", { action, ...params });
+  }, [user]);
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await invokeRetellSync("list-agents");
+      const data = await invokeRetellSync("list-agents") as { agents: RetellAgent[] };
       setAgents(data.agents || []);
       return data.agents;
     } catch (error) {
@@ -103,7 +86,7 @@ export const useRetell = () => {
   const fetchCalls = useCallback(async (agentId?: string, limit: number = 100) => {
     setLoading(true);
     try {
-      const data = await invokeRetellSync("list-calls", { agentId, limit });
+      const data = await invokeRetellSync("list-calls", { agentId, limit }) as { calls: RetellCall[] };
       setCalls(data.calls || []);
       return data.calls;
     } catch (error) {
@@ -122,7 +105,7 @@ export const useRetell = () => {
   const syncCalls = useCallback(async (agentId?: string, limit: number = 100) => {
     setSyncing(true);
     try {
-      const data = await invokeRetellSync("sync-calls", { agentId, limit });
+      const data = await invokeRetellSync("sync-calls", { agentId, limit }) as { message: string; synced: number };
       toast({
         title: "Sync Complete",
         description: data.message || `Synced ${data.synced} calls`,
@@ -144,7 +127,7 @@ export const useRetell = () => {
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await invokeRetellSync("get-analytics");
+      const data = await invokeRetellSync("get-analytics") as RetellAnalytics;
       setAnalytics(data);
       return data;
     } catch (error) {
@@ -162,12 +145,11 @@ export const useRetell = () => {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      const data = await invokeRetellSync("get-live-status");
+      const data = await invokeRetellSync("get-live-status") as { activeCalls: LiveCall[]; count: number };
       setLiveCalls(data.activeCalls || []);
       return data;
     } catch (error) {
       console.error("Failed to fetch live status:", error);
-      // Don't show toast for live status errors - they can be frequent
       return { activeCalls: [], count: 0 };
     }
   }, [invokeRetellSync]);
@@ -186,11 +168,10 @@ export const useRetell = () => {
     }
   }, [invokeRetellSync, toast]);
 
-  // Auto-refresh live status every 30 seconds when there are active calls
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     
-    if (session?.access_token && liveCalls.length > 0) {
+    if (user && liveCalls.length > 0) {
       interval = setInterval(() => {
         fetchLiveStatus();
       }, 30000);
@@ -199,7 +180,7 @@ export const useRetell = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [session, liveCalls.length, fetchLiveStatus]);
+  }, [user, liveCalls.length, fetchLiveStatus]);
 
   return {
     loading,

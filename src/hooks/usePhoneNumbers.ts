@@ -1,21 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface PhoneNumber {
   id: string;
-  retell_phone_number_id: string | null;
-  phone_number: string;
+  retellPhoneNumberId: string | null;
+  phoneNumber: string;
   nickname: string | null;
-  area_code: string | null;
-  inbound_agent_id: string | null;
-  outbound_agent_id: string | null;
-  is_active: boolean;
-  last_synced_at: string | null;
-  created_at: string;
-  inbound_agent?: { name: string } | null;
-  outbound_agent?: { name: string } | null;
+  areaCode: string | null;
+  inboundAgentId: string | null;
+  outboundAgentId: string | null;
+  isActive: boolean;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  inboundAgent?: { name: string } | null;
+  outboundAgent?: { name: string } | null;
 }
 
 export const usePhoneNumbers = () => {
@@ -30,17 +30,7 @@ export const usePhoneNumbers = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("phone_numbers")
-        .select(`
-          *,
-          inbound_agent:ai_agents!phone_numbers_inbound_agent_id_fkey(name),
-          outbound_agent:ai_agents!phone_numbers_outbound_agent_id_fkey(name)
-        `)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await api.get<PhoneNumber[]>("/api/phone-numbers");
       setPhoneNumbers(data || []);
     } catch (error) {
       console.error("Error fetching phone numbers:", error);
@@ -54,11 +44,9 @@ export const usePhoneNumbers = () => {
     
     try {
       setSyncing(true);
-      const { data, error } = await supabase.functions.invoke("retell-sync", {
-        body: { action: "sync-phone-numbers" },
+      const data = await api.post<{ message: string }>("/api/retell-sync", {
+        action: "sync-phone-numbers",
       });
-
-      if (error) throw error;
       
       toast.success(data.message || "Phone numbers synced successfully");
       await fetchPhoneNumbers();
@@ -82,17 +70,13 @@ export const usePhoneNumbers = () => {
     
     try {
       setPurchasing(true);
-      const { data, error } = await supabase.functions.invoke("retell-sync", {
-        body: { 
-          action: "purchase-phone-number",
-          area_code: options.area_code,
-          nickname: options.nickname,
-          inbound_agent_id: options.inbound_agent_id === "none" ? undefined : options.inbound_agent_id,
-          outbound_agent_id: options.outbound_agent_id === "none" ? undefined : options.outbound_agent_id,
-        },
+      const data = await api.post<{ message: string }>("/api/retell-sync", {
+        action: "purchase-phone-number",
+        area_code: options.area_code,
+        nickname: options.nickname,
+        inbound_agent_id: options.inbound_agent_id === "none" ? undefined : options.inbound_agent_id,
+        outbound_agent_id: options.outbound_agent_id === "none" ? undefined : options.outbound_agent_id,
       });
-
-      if (error) throw error;
       
       toast.success(data.message || "Phone number purchased successfully!");
       await fetchPhoneNumbers();
@@ -100,7 +84,6 @@ export const usePhoneNumbers = () => {
     } catch (error) {
       console.error("Error purchasing phone number:", error);
       
-      // Parse and show user-friendly error messages
       let errorMessage = "Failed to purchase phone number";
       if (error instanceof Error) {
         const msg = error.message;
