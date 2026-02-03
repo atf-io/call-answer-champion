@@ -18,15 +18,12 @@ const Hero = () => {
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 animate-slide-up">
-            Never Miss a Call.
-          </h1>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 animate-slide-up">Stop Missing Leads.</h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-            AI agents that handle your after-hours calls and respond to Google reviews automatically. 
-            Keep your customers happy 24/7.
-          </p>
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up" style={{
+          animationDelay: "0.1s"
+        }}>AI agents that handle phone calls, texts and respond to Google reviews automatically. Keep your customers happy 24/7.</p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-slide-up" style={{ animationDelay: "0.2s" }}>
@@ -49,9 +46,7 @@ const Hero = () => {
                 <Phone className="w-6 h-6 text-primary-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">After-Hours AI Agents</h3>
-              <p className="text-sm text-muted-foreground">
-                Powered by Retell.ai, our agents handle calls naturally, book appointments, and capture leads while you sleep.
-              </p>
+              <p className="text-sm text-muted-foreground">Powered by cutting edge Voice AI, our agents handle calls naturally, book appointments, and capture leads while you sleep.</p>
             </div>
 
             <div className="glass rounded-2xl p-6 text-left hover:shadow-elevated transition-all duration-300 group cursor-pointer">
@@ -59,9 +54,7 @@ const Hero = () => {
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Lead Intake Agents</h3>
-              <p className="text-sm text-muted-foreground">
-                Instantly call leads from Angi, Thumbtack, and other aggregators to qualify and convert them before competitors.
-              </p>
+              <p className="text-sm text-muted-foreground">Instantly engage leads from Angi, Thumbtack, and other aggregators to qualify and convert them before competitors.</p>
             </div>
 
             <div className="glass rounded-2xl p-6 text-left hover:shadow-elevated transition-all duration-300 group cursor-pointer">
