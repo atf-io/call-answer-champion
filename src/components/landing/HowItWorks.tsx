@@ -17,7 +17,7 @@ const steps = [
     number: "03",
     icon: Rocket,
     title: "Go Live",
-    description: "Activate your AI agents and start handling calls and reviews automatically.",
+    description: "Activate your AI agents and start handling calls, web leads, and reviews automatically.",
   },
   {
     number: "04",
@@ -37,8 +37,7 @@ const HowItWorks = () => {
             <span className="text-sm text-muted-foreground">Simple Process</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-            Get Started in{" "}
-            <span className="text-gradient">Minutes</span>
+            Get Started in Minutes
           </h2>
           <p className="text-lg text-muted-foreground">
             No technical expertise required. Our guided setup makes it easy.
