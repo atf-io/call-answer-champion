@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ArrowRight, Globe, Loader2, Sparkles, Building2, Phone, MapPin, X, Plus, Mail, Clock, Award, Wrench, BadgeCheck, CreditCard } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { BusinessProfile } from "@/pages/Onboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,11 +29,18 @@ const BusinessProfileStep = ({ profile, onProfileChange, onNext, onSkip }: Busin
 
     setScraping(true);
     try {
-      const { data, error } = await supabase.functions.invoke("scrape-business", {
-        body: { url },
+      const response = await fetch("/api/scrape-business", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ url }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to scrape");
+      }
 
       if (data.success && data.data) {
         const scraped = data.data;
