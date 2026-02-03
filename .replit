@@ -32,10 +32,6 @@ build = ["npm", "run", "build"]
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8080
 externalPort = 80
 
 [[ports]]
@@ -60,8 +56,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "PORT=5000 npm run dev"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 integrations = ["javascript_database:1.0.0"]
