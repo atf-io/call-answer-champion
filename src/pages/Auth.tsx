@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Phone, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -131,28 +130,9 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setGoogleLoading(true);
-    try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Google Sign In Failed",
-          description: error.message,
-        });
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Google Sign In Failed",
-        description: "An unexpected error occurred. Please try again.",
-      });
-    } finally {
-      setGoogleLoading(false);
-    }
+    window.location.href = "/api/login";
   };
 
   return (

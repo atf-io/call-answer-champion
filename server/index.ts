@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupAuth } from "./auth";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 
@@ -39,7 +39,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  setupAuth(app);
+  await setupAuth(app);
+  registerAuthRoutes(app);
   registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
