@@ -28,6 +28,7 @@ import Alerting from "./pages/agents/Alerting";
 import Billing from "./pages/agents/Billing";
 import AgentSettings from "./pages/agents/AgentSettings";
 import Playground from "./pages/agents/Playground";
+import SMS from "./pages/agents/SMS";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/dashboard/agents/billing" element={<Billing />} />
             <Route path="/dashboard/agents/settings" element={<AgentSettings />} />
             <Route path="/dashboard/agents/playground" element={<Playground />} />
+            <Route path="/dashboard/agents/sms" element={<SMS />} />
             <Route path="/dashboard/reviews" element={<Reviews />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
