@@ -50,7 +50,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, agentId, limit = 100, area_code, nickname, inbound_agent_id, outbound_agent_id, agentConfig } = body;
+    const { action, agentId, limit = 100, area_code, nickname, inbound_agent_id, outbound_agent_id, agentConfig, testConfig } = body;
     console.log(`Retell sync action: ${action} for user: ${user.id}`);
 
     let result;
@@ -106,6 +106,10 @@ serve(async (req) => {
 
       case "purchase-phone-number":
         result = await purchasePhoneNumber(RETELL_API_KEY, supabase, user.id, area_code, nickname, inbound_agent_id, outbound_agent_id);
+        break;
+
+      case "create-web-call":
+        result = await createWebCall(RETELL_API_KEY, supabase, user.id, agentId, testConfig);
         break;
 
       default:
@@ -405,7 +409,7 @@ async function getLiveCallStatus(apiKey: string) {
       limit: 50,
       sort_order: "descending",
       filter_criteria: {
-        call_status: ["ongoing", "ringing"],
+        call_status: ["ongoing"],
       },
     }),
   });
@@ -979,5 +983,115 @@ async function deleteRetellAgent(
   return {
     success: true,
     message: `Successfully deleted agent "${existingAgent.name}"`,
+  };
+}
+
+// Create a web call for testing agents in the playground
+async function createWebCall(
+  apiKey: string,
+  supabase: any,
+  userId: string,
+  agentId?: string,
+  testConfig?: {
+    voice_id?: string;
+    language?: string;
+    prompt?: string;
+    greeting_message?: string;
+    voice_temperature?: number;
+    voice_speed?: number;
+  }
+) {
+  console.log(`Creating web call for user: ${userId}, agentId: ${agentId}`);
+
+  let retellAgentId = agentId;
+
+  // If an agent ID is provided, get the Retell agent ID from our database
+  if (agentId) {
+    const { data: agent, error } = await supabase
+      .from("ai_agents")
+      .select("retell_agent_id")
+      .eq("id", agentId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !agent?.retell_agent_id) {
+      throw new Error("Agent not found or not synced to Retell");
+    }
+    retellAgentId = agent.retell_agent_id;
+  } else if (testConfig) {
+    // Create a temporary agent for testing
+    console.log("Creating temporary test agent with config:", testConfig);
+    
+    const tempAgentPayload: any = {
+      agent_name: `Test Agent ${Date.now()}`,
+      voice_id: testConfig.voice_id || "11labs-Adrian",
+      language: testConfig.language || "en-US",
+      response_engine: {
+        type: "retell-llm",
+        llm_id: null, // Will use default
+      },
+    };
+
+    // Create temp agent in Retell
+    const createResponse = await fetch(`${RETELL_BASE_URL}/create-agent`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(tempAgentPayload),
+    });
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error("Failed to create temp agent:", createResponse.status, errorText);
+      throw new Error(`Failed to create test agent: ${createResponse.status}`);
+    }
+
+    const tempAgent = await createResponse.json();
+    retellAgentId = tempAgent.agent_id;
+    console.log("Created temporary agent:", retellAgentId);
+  }
+
+  if (!retellAgentId) {
+    throw new Error("No agent specified for web call");
+  }
+
+  // Create the web call
+  const webCallPayload: any = {
+    agent_id: retellAgentId,
+  };
+
+  // Add optional metadata
+  if (testConfig) {
+    webCallPayload.metadata = {
+      test_call: true,
+      user_id: userId,
+      config: testConfig,
+    };
+  }
+
+  const response = await fetch(`${RETELL_BASE_URL}/v2/create-web-call`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(webCallPayload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to create web call:", response.status, errorText);
+    throw new Error(`Failed to create web call: ${response.status}`);
+  }
+
+  const webCall = await response.json();
+  console.log("Web call created:", webCall.call_id);
+
+  return {
+    access_token: webCall.access_token,
+    call_id: webCall.call_id,
+    agent_id: retellAgentId,
   };
 }
