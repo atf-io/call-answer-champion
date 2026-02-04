@@ -31,15 +31,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function registerRoutes(app: Express) {
-  // Auth routes
-  app.get("/api/auth/user", (req, res) => {
-    if (req.isAuthenticated() && req.user) {
-      res.json({ user: req.user });
-    } else {
-      res.json({ user: null });
-    }
-  });
-
   // Profile routes
   app.get("/api/profile", requireAuth, async (req, res) => {
     try {

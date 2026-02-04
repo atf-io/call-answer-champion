@@ -46,19 +46,19 @@ export const api = {
 };
 
 export const auth = {
-  async login(username: string, password: string): Promise<{ user: { id: number; username: string } }> {
-    return api.post("/api/auth/login", { username, password });
+  async login(email: string, password: string): Promise<{ user: { id: string; username: string; email: string } }> {
+    return api.post("/api/auth/login", { email, password });
   },
 
-  async register(username: string, password: string, email?: string, fullName?: string): Promise<{ user: { id: number; username: string } }> {
-    return api.post("/api/auth/register", { username, password, email, fullName });
+  async register(email: string, password: string, fullName?: string): Promise<{ user: { id: string; username: string; email: string } }> {
+    return api.post("/api/auth/register", { email, password, fullName });
   },
 
   async logout(): Promise<{ success: boolean }> {
     return api.post("/api/auth/logout");
   },
 
-  async getUser(): Promise<{ user: { id: number; username: string } | null }> {
+  async getUser(): Promise<{ user: { id: string; username: string; email?: string } | null }> {
     return api.get("/api/auth/user");
   },
 };

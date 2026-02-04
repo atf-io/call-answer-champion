@@ -2,18 +2,30 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Phone, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Phone, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const emailSchema = z.string().email("Please enter a valid email address");
+const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
 const Auth = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { user, loading: authLoading } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (user) {
-        // Check if user has completed onboarding by fetching profile
         try {
           const response = await fetch("/api/profile", { credentials: "include" });
           if (response.ok) {
@@ -37,19 +49,85 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const handleSignIn = () => {
+  const validateForm = () => {
+    const newErrors: { email?: string; password?: string } = {};
+    
+    try {
+      emailSchema.parse(email);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.email = e.errors[0].message;
+      }
+    }
+    
+    try {
+      passwordSchema.parse(password);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.password = e.errors[0].message;
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setLoading(true);
+    
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: error.message || "Invalid email or password. Please try again.",
+          });
+        }
+      } else {
+        const { error } = await signUp(email, password);
+        if (error) {
+          if (error.message.includes("already registered")) {
+            toast({
+              variant: "destructive",
+              title: "Sign Up Failed",
+              description: "This email is already registered. Please login instead.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Sign Up Failed",
+              description: error.message,
+            });
+          }
+        } else {
+          toast({
+            title: "Account Created!",
+            description: "You can now access your dashboard.",
+          });
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    setGoogleLoading(true);
     window.location.href = "/api/login";
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center gradient-hero p-4">
-      {/* Background Effects */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/10 blur-3xl animate-pulse-glow" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-primary/5 blur-3xl animate-pulse-glow" style={{ animationDelay: "1.5s" }} />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
           <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
             <Phone className="w-6 h-6 text-primary-foreground" />
@@ -57,24 +135,94 @@ const Auth = () => {
           <span className="text-2xl font-bold">VoiceHub</span>
         </div>
 
-        {/* Auth Card */}
         <div className="glass rounded-2xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold mb-2">Welcome</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              {isLogin ? "Welcome Back" : "Create Account"}
+            </h1>
             <p className="text-muted-foreground">
-              Sign in to access your dashboard
+              {isLogin 
+                ? "Sign in to access your dashboard" 
+                : "Get started with VoiceHub today"}
             </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 h-12 bg-muted/50 border-border"
+                  data-testid="input-email"
+                />
+              </div>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 h-12 bg-muted/50 border-border"
+                  data-testid="input-password"
+                />
+              </div>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
+            </div>
+
+            <Button 
+              type="submit" 
+              variant="hero" 
+              className="w-full" 
+              size="lg"
+              disabled={loading}
+              data-testid="button-submit"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  {isLogin ? "Sign In" : "Create Account"}
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            </div>
           </div>
 
           <Button
             type="button"
-            variant="hero"
+            variant="outline"
             className="w-full h-12"
-            onClick={handleSignIn}
-            disabled={loading}
-            data-testid="button-signin"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            data-testid="button-google-signin"
           >
-            {loading ? (
+            {googleLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
@@ -101,12 +249,20 @@ const Auth = () => {
             )}
           </Button>
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Sign in with your Google account to get started
-          </p>
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="button-toggle-auth-mode"
+            >
+              {isLogin 
+                ? "Don't have an account? Sign up" 
+                : "Already have an account? Sign in"}
+            </button>
+          </div>
         </div>
 
-        {/* Back to Home */}
         <div className="mt-6 text-center">
           <a 
             href="/" 

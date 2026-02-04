@@ -2,8 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { auth } from "@/lib/api";
 
 interface User {
-  id: number;
+  id: string | number;
   username: string;
+  email?: string;
 }
 
 interface AuthContextType {
@@ -47,8 +48,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
-      // Use email as both username and email for registration
-      const { user } = await auth.register(email, password, email, fullName);
+      const { user } = await auth.register(email, password, fullName);
       setUser(user);
       return { error: null };
     } catch (error) {

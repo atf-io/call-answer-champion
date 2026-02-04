@@ -4,6 +4,11 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **Hybrid Authentication System**: Implemented dual authentication supporting:
+  - **Google OAuth** via Replit Auth (OIDC) - redirects to `/api/login`
+  - **Email/Password** login with bcrypt password hashing - uses `/api/auth/login` and `/api/auth/register`
+  - Both methods use PostgreSQL session storage (`sessions` table)
+  - User data stored in `auth_users` table with optional `password_hash` column
 - **Migration from Lovable/Supabase to Replit**: Complete migration of the project infrastructure
   - Replaced Supabase with Replit PostgreSQL database using Drizzle ORM
   - Converted Supabase Edge Functions to Express server routes
@@ -33,7 +38,13 @@ VoiceHub is an AI-powered business communication platform that integrates with R
 - `src/lib/api.ts` - API client for server communication
 
 ### Key API Endpoints
-- `/api/auth/*` - Authentication (login, register, logout)
+- `/api/login` - Google OAuth initiation (Replit Auth)
+- `/api/callback` - OAuth callback handler
+- `/api/logout` - OAuth logout
+- `/api/auth/user` - Get current authenticated user
+- `/api/auth/login` - Email/password login (POST)
+- `/api/auth/register` - Email/password registration (POST)
+- `/api/auth/logout` - Local auth logout (POST)
 - `/api/agents` - AI agent management
 - `/api/retell-sync` - Retell.ai integration (agents, calls, phone numbers)
 - `/api/scrape-business` - Business data extraction

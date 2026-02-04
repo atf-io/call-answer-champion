@@ -1,6 +1,6 @@
 run = "npm run dev"
 entrypoint = "src/main.tsx"
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
