@@ -27,6 +27,7 @@ import QualityAssurance from "./pages/agents/QualityAssurance";
 import Alerting from "./pages/agents/Alerting";
 import Billing from "./pages/agents/Billing";
 import AgentSettings from "./pages/agents/AgentSettings";
+import Playground from "./pages/agents/Playground";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/dashboard/agents/alerting" element={<Alerting />} />
             <Route path="/dashboard/agents/billing" element={<Billing />} />
             <Route path="/dashboard/agents/settings" element={<AgentSettings />} />
+            <Route path="/dashboard/agents/playground" element={<Playground />} />
             <Route path="/dashboard/reviews" element={<Reviews />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
