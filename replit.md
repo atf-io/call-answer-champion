@@ -4,6 +4,14 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **Chat Simulator (Retell Chat Agent Integration)**:
+  - Rebuilt SMS Simulator into full Chat Simulator connected to Retell AI Chat Agent API
+  - Backend endpoints: create-chat, send-chat-message, end-chat (proxied through retell-sync)
+  - Agent selector filters for Chat Agents (voice_type="Chat Agent" OR voice_model="chat" OR voice_id="chat-agent")
+  - Real-time message thread with user/agent message bubbles, timestamps, typing indicators
+  - Session management: Start Chat creates session, End Chat terminates it, New Chat resets
+  - Response parsing handles both "agent" and "assistant" role labels with fallback to top-level content
+  - Renamed sidebar item from "SMS Simulator" to "Chat Simulator"
 - **Retell AI Agent Sync**:
   - Added "Sync from Retell AI" button on Agents page below the agent type cards
   - Backend `sync-agents-from-retell` action fetches all agents from Retell API and upserts into local database
