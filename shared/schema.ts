@@ -173,6 +173,7 @@ export const contacts = pgTable("contacts", {
   status: text("status").default("new"),
   tags: text("tags").array(),
   notes: text("notes"),
+  metadata: jsonb("metadata").default({}),
   lastContactedAt: timestamp("last_contacted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

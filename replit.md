@@ -12,6 +12,14 @@ VoiceHub is an AI-powered business communication platform that integrates with R
   - Webhook management API: generate/revoke keys, send test webhooks, view logs
   - Webhooks page in dashboard (Deploy section) with Endpoints, Test, and Activity Log tabs
   - Payload parsing matches real Angi JSON feed and Google LSA Lead Form formats
+- **Lead Variables System for Campaigns & Voice Agents**:
+  - Added `metadata` jsonb column to contacts table to store all source-specific lead fields
+  - Webhook extractors now capture: first_name, last_name, service_category, task_name, address, postal_code, comments, spid, lead_id, geo_location
+  - Updated VariableInserter with grouped variables: Lead Info, Service Details, Location, Business
+  - Template variables: {{first_name}}, {{last_name}}, {{full_name}}, {{phone}}, {{email}}, {{service_category}}, {{task_name}}, {{address}}, {{postal_code}}, {{comments}}, {{lead_source}}, {{business_name}}, {{agent_name}}
+  - Variable resolution API: POST `/api/resolve-variables` resolves {{variables}} using contact metadata
+  - Per-contact variables API: GET `/api/contacts/:id/variables` returns all available variables for a contact
+  - Variables available for SMS campaigns, voice agent prompts, and any templated content
 - **Agent Creation Fix (snake_case/camelCase)**: Fixed critical naming convention mismatch:
   - Standardized frontend Agent interface to use snake_case (matching form components)
   - Added `mapAgentFromApi()` helper in useAgents.ts to convert Drizzle's camelCase API responses to snake_case

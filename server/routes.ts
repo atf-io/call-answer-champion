@@ -526,6 +526,79 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Variable resolution - resolves template variables using contact data + metadata
+  app.post("/api/resolve-variables", requireAuth, async (req, res) => {
+    try {
+      const { template, contactId, variables } = req.body;
+      if (!template) return res.status(400).json({ error: "Template is required" });
+
+      let contactData: Record<string, any> = {};
+      if (contactId) {
+        const contact = await storage.getContact(contactId, String(req.user!.id));
+        if (contact) {
+          const meta = (contact.metadata as Record<string, any>) || {};
+          const nameParts = (contact.name || "").split(" ");
+          contactData = {
+            full_name: contact.name || "",
+            first_name: meta.first_name || nameParts[0] || "",
+            last_name: meta.last_name || nameParts.slice(1).join(" ") || "",
+            phone: contact.phone || "",
+            email: contact.email || "",
+            lead_source: contact.source || meta.lead_source || "",
+            service_category: meta.service_category || "",
+            task_name: meta.task_name || meta.service_category || "",
+            address: meta.address || "",
+            postal_code: meta.postal_code || "",
+            comments: meta.comments || "",
+          };
+        }
+      }
+
+      const mergedVars = { ...contactData, ...(variables || {}) };
+      const resolved = template.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => {
+        return mergedVars[key] !== undefined && mergedVars[key] !== null ? String(mergedVars[key]) : `{{${key}}}`;
+      });
+
+      res.json({ resolved, variables: mergedVars });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resolve variables" });
+    }
+  });
+
+  // Get available lead variables for a contact
+  app.get("/api/contacts/:id/variables", requireAuth, async (req, res) => {
+    try {
+      const contact = await storage.getContact(req.params.id, String(req.user!.id));
+      if (!contact) return res.status(404).json({ error: "Contact not found" });
+
+      const meta = (contact.metadata as Record<string, any>) || {};
+      const nameParts = (contact.name || "").split(" ");
+      const variables: Record<string, string> = {
+        full_name: contact.name || "",
+        first_name: meta.first_name || nameParts[0] || "",
+        last_name: meta.last_name || nameParts.slice(1).join(" ") || "",
+        phone: contact.phone || "",
+        email: contact.email || "",
+        lead_source: contact.source || meta.lead_source || "",
+        service_category: meta.service_category || "",
+        task_name: meta.task_name || meta.service_category || "",
+        address: meta.address || "",
+        postal_code: meta.postal_code || "",
+        comments: meta.comments || "",
+      };
+
+      Object.keys(meta).forEach(key => {
+        if (!(key in variables) && meta[key]) {
+          variables[key] = String(meta[key]);
+        }
+      });
+
+      res.json({ variables, source: contact.source, contactId: contact.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get contact variables" });
+    }
+  });
+
   // ===================== WEBHOOK ENDPOINTS =====================
   // Public endpoints authenticated via per-tenant secret key in query string or X-API-KEY header
 
@@ -548,32 +621,74 @@ export function registerRoutes(app: Express) {
     const phone = payload.phone_number || payload.phone || payload.phoneNumber || null;
     const email = payload.email || null;
     const category = payload.category || payload.task_name || payload.service || null;
-    return { name, phone, email, tags: category ? [category] : ["angi-lead"], notes: payload.comments || payload.description || null };
+    const metadata: Record<string, any> = {
+      first_name: firstName || null,
+      last_name: lastName || null,
+      service_category: category,
+      task_name: payload.task_name || null,
+      address: payload.address || null,
+      postal_code: payload.postal_code || payload.zip_code || null,
+      comments: payload.comments || payload.description || null,
+      spid: payload.spid || null,
+      lead_source: "angi",
+    };
+    return { name, phone, email, tags: category ? [category] : ["angi-lead"], notes: payload.comments || payload.description || null, metadata };
   }
 
   function extractGoogleLsaLead(payload: any) {
     let name = "Google LSA Lead";
     let phone = null;
     let email = null;
+    let postalCode = null;
+    let address = null;
+    let jobType = null;
     if (payload.user_column_data && Array.isArray(payload.user_column_data)) {
       for (const field of payload.user_column_data) {
         if (field.column_id === "FULL_NAME") name = field.string_value || name;
         if (field.column_id === "PHONE_NUMBER") phone = field.string_value;
         if (field.column_id === "EMAIL") email = field.string_value;
+        if (field.column_id === "POSTAL_CODE") postalCode = field.string_value;
+        if (field.column_id === "ADDRESS") address = field.string_value;
+        if (field.column_id === "JOB_TYPE") jobType = field.string_value;
       }
     } else {
       name = payload.name || payload.customer_name || name;
       phone = payload.phone || payload.phone_number || null;
       email = payload.email || null;
+      postalCode = payload.postal_code || payload.zip_code || null;
+      address = payload.address || null;
+      jobType = payload.job_type || payload.category || null;
     }
-    return { name, phone, email, tags: ["google-lsa"], notes: payload.lead_id ? `Google Lead ID: ${payload.lead_id}` : null };
+    const nameParts = name.split(" ");
+    const metadata: Record<string, any> = {
+      first_name: nameParts[0] || null,
+      last_name: nameParts.slice(1).join(" ") || null,
+      service_category: jobType,
+      address,
+      postal_code: postalCode,
+      lead_id: payload.lead_id || null,
+      geo_location: payload.geo_location || null,
+      lead_source: "google-lsa",
+    };
+    return { name, phone, email, tags: ["google-lsa"], notes: payload.lead_id ? `Google Lead ID: ${payload.lead_id}` : null, metadata };
   }
 
   function extractGenericLead(payload: any, source: string) {
-    const name = payload.name || payload.first_name || payload.customer_name || `${source} Lead`;
+    const firstName = payload.first_name || "";
+    const lastName = payload.last_name || "";
+    const name = payload.name || `${firstName} ${lastName}`.trim() || payload.customer_name || `${source} Lead`;
     const phone = payload.phone || payload.phone_number || payload.phoneNumber || null;
     const email = payload.email || null;
-    return { name, phone, email, tags: [source], notes: payload.notes || payload.comments || payload.description || null };
+    const metadata: Record<string, any> = {
+      first_name: firstName || name.split(" ")[0] || null,
+      last_name: lastName || name.split(" ").slice(1).join(" ") || null,
+      service_category: payload.category || payload.service || payload.task_name || null,
+      address: payload.address || null,
+      postal_code: payload.postal_code || payload.zip_code || null,
+      comments: payload.notes || payload.comments || payload.description || null,
+      lead_source: source,
+    };
+    return { name, phone, email, tags: [source], notes: payload.notes || payload.comments || payload.description || null, metadata };
   }
 
   async function processWebhook(req: any, res: any, source: string, extractFn: (p: any) => any) {
@@ -606,6 +721,7 @@ export function registerRoutes(app: Express) {
           status: "new",
           tags: leadData.tags,
           notes: leadData.notes,
+          metadata: leadData.metadata || {},
         });
 
         await storage.updateWebhookLog(webhookLog.id, { status: "processed", contactId: contact.id });
@@ -711,6 +827,7 @@ export function registerRoutes(app: Express) {
           tags: lead.tags,
           notes: lead.notes,
           source,
+          metadata: lead.metadata || {},
         });
         await storage.updateWebhookLog(webhookLog.id, { status: "processed" });
       } catch (contactErr: any) {
