@@ -211,6 +211,7 @@ export const useRetell = () => {
     calls,
     analytics,
     liveCalls,
+    invokeRetellSync,
     fetchAgents,
     fetchCalls,
     syncCalls,

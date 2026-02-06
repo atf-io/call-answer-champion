@@ -936,6 +936,69 @@ export function registerRoutes(app: Express) {
           result = await syncAgentsFromRetell(RETELL_API_KEY, userId);
           break;
 
+        case "create-chat": {
+          const { chatAgentId } = req.body;
+          if (!chatAgentId) {
+            return res.status(400).json({ error: "chatAgentId is required" });
+          }
+          const chatResponse = await fetch(`${RETELL_BASE_URL}/create-chat`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RETELL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ agent_id: chatAgentId }),
+          });
+          if (!chatResponse.ok) {
+            const errorText = await chatResponse.text();
+            throw new Error(`Failed to create chat: ${errorText}`);
+          }
+          result = await chatResponse.json();
+          break;
+        }
+
+        case "send-chat-message": {
+          const { chatId, message } = req.body;
+          if (!chatId || !message) {
+            return res.status(400).json({ error: "chatId and message are required" });
+          }
+          const msgResponse = await fetch(`${RETELL_BASE_URL}/create-chat-completion`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RETELL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ chat_id: chatId, message }),
+          });
+          if (!msgResponse.ok) {
+            const errorText = await msgResponse.text();
+            throw new Error(`Failed to send message: ${errorText}`);
+          }
+          result = await msgResponse.json();
+          break;
+        }
+
+        case "end-chat": {
+          const { chatId: endChatId } = req.body;
+          if (!endChatId) {
+            return res.status(400).json({ error: "chatId is required" });
+          }
+          const endResponse = await fetch(`${RETELL_BASE_URL}/end-chat`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RETELL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ chat_id: endChatId }),
+          });
+          if (!endResponse.ok) {
+            const errorText = await endResponse.text();
+            throw new Error(`Failed to end chat: ${errorText}`);
+          }
+          result = { success: true };
+          break;
+        }
+
         case "sync-calls":
           result = await syncCallsToDatabase(RETELL_API_KEY, userId, agentId, limit);
           break;

@@ -38,7 +38,7 @@ const navigation: NavGroup[] = [
       { name: "Agents", href: "/dashboard/agents", icon: Bot },
       { name: "Business Profile", href: "/dashboard/agents/knowledge", icon: BookOpen },
       { name: "Voice AI Playground", href: "/dashboard/agents/playground", icon: Mic },
-      { name: "SMS Simulator", href: "/dashboard/agents/sms-simulator", icon: TestTube },
+      { name: "Chat Simulator", href: "/dashboard/agents/sms-simulator", icon: TestTube },
     ],
   },
   {
