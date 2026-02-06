@@ -682,19 +682,44 @@ export function registerRoutes(app: Express) {
         secret = await storage.createWebhookSecret({ userId, source, secretKey });
       }
 
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
       const testPayload = { ...payload, is_test: true };
-      const webhookUrl = `${baseUrl}/api/webhooks/${source}?key=${secret.secretKey}`;
 
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testPayload),
+      let lead: { name: string; phone: string | null; email: string | null; tags: string[]; notes: string | null };
+      if (source === "angi") {
+        lead = extractAngiLead(testPayload);
+      } else if (source === "google-lsa") {
+        lead = extractGoogleLsaLead(testPayload);
+      } else {
+        lead = extractGenericLead(testPayload, source);
+      }
+
+      const webhookLog = await storage.createWebhookLog({
+        userId,
+        source,
+        eventType: "new_lead",
+        payload: testPayload,
+        status: "received",
+        isTest: true,
       });
 
-      const result = await response.json();
-      res.json(result);
+      try {
+        await storage.createContact({
+          userId,
+          name: lead.name,
+          phone: lead.phone,
+          email: lead.email,
+          tags: lead.tags,
+          notes: lead.notes,
+          source,
+        });
+        await storage.updateWebhookLog(webhookLog.id, { status: "processed" });
+      } catch (contactErr: any) {
+        await storage.updateWebhookLog(webhookLog.id, { status: "error", errorMessage: contactErr.message });
+      }
+
+      res.json({ success: true, message: `Test ${source} webhook processed`, logId: webhookLog.id });
     } catch (error: any) {
+      console.error("Webhook test error:", error);
       res.status(500).json({ error: "Failed to send test webhook", details: error.message });
     }
   });
