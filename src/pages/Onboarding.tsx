@@ -8,7 +8,6 @@ import BusinessProfileStep from "@/components/onboarding/BusinessProfileStep";
 import AgentSelectionStep from "@/components/onboarding/AgentSelectionStep";
 import AgentConfigStep from "@/components/onboarding/AgentConfigStep";
 import OnboardingComplete from "@/components/onboarding/OnboardingComplete";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type AgentType = "voice" | "speed-to-lead" | "reviews" | null;
@@ -128,26 +127,27 @@ const Onboarding = () => {
     
     setSaving(true);
     try {
-      // Save business profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          business_name: businessProfile.business_name || null,
-          business_description: businessProfile.business_description || null,
-          business_phone: businessProfile.business_phone || null,
-          business_address: businessProfile.business_address || null,
-          business_website: businessProfile.business_website || null,
-          business_logo_url: businessProfile.business_logo_url || null,
-          business_colors: businessProfile.business_colors || null,
-          business_services: businessProfile.business_services.length > 0 ? businessProfile.business_services : null,
-          business_team_info: businessProfile.business_team_info || null,
-          business_faqs: businessProfile.business_faqs.length > 0 ? businessProfile.business_faqs : null,
-          business_social_links: businessProfile.business_social_links || null,
-          onboarding_completed: true,
-        })
-        .eq("user_id", user.id);
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          businessName: businessProfile.business_name || null,
+          businessDescription: businessProfile.business_description || null,
+          businessPhone: businessProfile.business_phone || null,
+          businessAddress: businessProfile.business_address || null,
+          businessWebsite: businessProfile.business_website || null,
+          businessLogoUrl: businessProfile.business_logo_url || null,
+          businessColors: businessProfile.business_colors || null,
+          businessServices: businessProfile.business_services.length > 0 ? businessProfile.business_services : null,
+          businessTeamInfo: businessProfile.business_team_info || null,
+          businessFaqs: businessProfile.business_faqs.length > 0 ? businessProfile.business_faqs : null,
+          businessSocialLinks: businessProfile.business_social_links || null,
+          onboardingCompleted: true,
+        }),
+      });
 
-      if (profileError) throw profileError;
+      if (!response.ok) throw new Error("Failed to save profile");
 
       toast.success("Onboarding complete! Welcome to your dashboard.");
       navigate("/dashboard");
