@@ -122,6 +122,105 @@ const Onboarding = () => {
     }
   };
 
+  const createKnowledgeBaseEntry = async (title: string, content: string, sourceUrl?: string) => {
+    const response = await fetch("/api/knowledge-base", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        title,
+        sourceType: "url",
+        sourceUrl: sourceUrl || businessProfile.business_website || "",
+        content,
+        summary: null,
+        metadata: { scraped_from: businessProfile.business_website, auto_generated: true, source: "onboarding" },
+      }),
+    });
+    if (!response.ok) {
+      console.error(`Failed to save knowledge base entry: ${title}`);
+    }
+  };
+
+  const saveBusinessProfileToKnowledgeBase = async () => {
+    const bp = businessProfile;
+    const hasContent = (val: unknown) => {
+      if (!val) return false;
+      if (typeof val === "string") return val.trim().length > 0;
+      if (Array.isArray(val)) return val.length > 0;
+      if (typeof val === "object") return Object.keys(val as object).length > 0;
+      return Boolean(val);
+    };
+
+    if (hasContent(bp.business_name) || hasContent(bp.business_description)) {
+      const parts = [];
+      if (bp.business_name) parts.push(`Business Name: ${bp.business_name}`);
+      if (bp.business_tagline) parts.push(`Tagline: ${bp.business_tagline}`);
+      if (bp.business_description) parts.push(`\nDescription:\n${bp.business_description}`);
+      if (bp.business_years_in_business) parts.push(`\nYears in Business: ${bp.business_years_in_business}`);
+      if (bp.business_team_info) parts.push(`\nTeam: ${bp.business_team_info}`);
+      await createKnowledgeBaseEntry(`${bp.business_name || "Business"} - Overview`, parts.join("\n"));
+    }
+
+    if (hasContent(bp.business_phone) || hasContent(bp.business_email) || hasContent(bp.business_address)) {
+      const parts = [];
+      if (bp.business_phone) parts.push(`Phone: ${bp.business_phone}`);
+      if (bp.business_email) parts.push(`Email: ${bp.business_email}`);
+      if (bp.business_address) parts.push(`Address: ${bp.business_address}`);
+      if (bp.business_website) parts.push(`Website: ${bp.business_website}`);
+      await createKnowledgeBaseEntry("Contact Information", parts.join("\n"));
+    }
+
+    if (hasContent(bp.business_services)) {
+      let content = bp.business_services.map((s) => `- ${s}`).join("\n");
+      if (hasContent(bp.business_specialties)) content += `\n\nSpecialties:\n${bp.business_specialties.map((s) => `- ${s}`).join("\n")}`;
+      await createKnowledgeBaseEntry("Services Offered", content);
+    }
+
+    if (hasContent(bp.business_certifications) || hasContent(bp.business_equipment_brands)) {
+      const parts = [];
+      if (bp.business_certifications.length) parts.push(`Certifications & Licenses:\n${bp.business_certifications.map((c) => `- ${c}`).join("\n")}`);
+      if (bp.business_equipment_brands.length) parts.push(`Equipment & Brands:\n${bp.business_equipment_brands.map((b) => `- ${b}`).join("\n")}`);
+      await createKnowledgeBaseEntry("Certifications & Equipment", parts.join("\n\n"));
+    }
+
+    if (hasContent(bp.business_hours) || bp.business_emergency_service) {
+      const parts = [];
+      if (Object.keys(bp.business_hours).length) {
+        parts.push("Business Hours:");
+        Object.entries(bp.business_hours).forEach(([day, time]) => {
+          parts.push(`  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${time}`);
+        });
+      }
+      if (bp.business_emergency_service) parts.push("\n24/7 Emergency Service Available");
+      if (bp.business_service_area?.cities?.length) {
+        parts.push(`\nService Area: ${bp.business_service_area.cities.join(", ")}`);
+        if (bp.business_service_area.radius) parts.push(`Service Radius: ${bp.business_service_area.radius}`);
+      }
+      await createKnowledgeBaseEntry("Hours & Service Area", parts.join("\n"));
+    }
+
+    if (hasContent(bp.business_pricing_info) || hasContent(bp.business_payment_methods) || hasContent(bp.business_guarantees)) {
+      const parts = [];
+      if (bp.business_pricing_info) parts.push(`Pricing: ${bp.business_pricing_info}`);
+      if (bp.business_payment_methods?.length) parts.push(`\nPayment Methods:\n${bp.business_payment_methods.map((p) => `- ${p}`).join("\n")}`);
+      if (bp.business_guarantees?.length) parts.push(`\nGuarantees & Warranties:\n${bp.business_guarantees.map((g) => `- ${g}`).join("\n")}`);
+      await createKnowledgeBaseEntry("Pricing & Payment", parts.join("\n"));
+    }
+
+    if (hasContent(bp.business_faqs)) {
+      const content = bp.business_faqs.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n");
+      await createKnowledgeBaseEntry("Frequently Asked Questions", content);
+    }
+
+    if (hasContent(bp.business_social_links)) {
+      const content = Object.entries(bp.business_social_links)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}: ${v}`)
+        .join("\n");
+      if (content) await createKnowledgeBaseEntry("Social Media & Review Profiles", content);
+    }
+  };
+
   const handleCompleteOnboarding = async () => {
     if (!user) return;
     
@@ -148,6 +247,16 @@ const Onboarding = () => {
       });
 
       if (!response.ok) throw new Error("Failed to save profile");
+
+      const hasAnyBusinessData = businessProfile.business_name || businessProfile.business_description || 
+        businessProfile.business_phone || businessProfile.business_services.length > 0;
+      if (hasAnyBusinessData) {
+        try {
+          await saveBusinessProfileToKnowledgeBase();
+        } catch (kbError) {
+          console.error("Error saving to knowledge base:", kbError);
+        }
+      }
 
       toast.success("Onboarding complete! Welcome to your dashboard.");
       navigate("/dashboard");
