@@ -4,6 +4,14 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **Agent Creation Fix (snake_case/camelCase)**: Fixed critical naming convention mismatch:
+  - Standardized frontend Agent interface to use snake_case (matching form components)
+  - Added `mapAgentFromApi()` helper in useAgents.ts to convert Drizzle's camelCase API responses to snake_case
+  - Added `normalizeAgentConfig()` in backend to accept both naming conventions
+  - Updated all agent pages (Dashboard, Playground, AgentsList, AgentEdit) to use snake_case
+  - Fixed `updateRetellAgent` to use normalized values with proper numeric type conversions for DB
+  - Cleaned up `createRetellAgent` to use normalized config consistently
+  - Data flow: Form (snake_case) → useAgents hook (snake_case) → API → backend normalizes → Drizzle DB (camelCase columns)
 - **Lead Analytics Dashboard**: Synced from GitHub/Lovable commit (abaa9da):
   - Added LeadAnalytics component with recharts (area chart, pie chart, bar chart, sentiment)
   - Created useLeadAnalytics hook using Express API endpoint

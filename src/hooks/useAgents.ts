@@ -6,73 +6,85 @@ import { useToast } from "@/hooks/use-toast";
 export interface Agent {
   id: string;
   name: string;
-  retellAgentId: string | null;
-  voiceType: string;
+  retell_agent_id: string | null;
+  voice_type: string;
   personality: string;
-  greetingMessage: string;
-  scheduleStart: string;
-  scheduleEnd: string;
-  scheduleDays: string[];
-  isActive: boolean;
-  totalCalls: number;
-  avgDurationSeconds: number;
-  satisfactionScore: number;
-  createdAt: string;
-  updatedAt: string;
-  voiceId: string | null;
-  voiceModel: string | null;
-  voiceTemperature: number | null;
-  voiceSpeed: number | null;
+  greeting_message: string;
+  schedule_start: string;
+  schedule_end: string;
+  schedule_days: string[];
+  is_active: boolean;
+  total_calls: number;
+  avg_duration_seconds: number;
+  satisfaction_score: number;
+  created_at: string;
+  updated_at: string;
+  voice_id: string | null;
+  voice_model: string | null;
+  voice_temperature: number | null;
+  voice_speed: number | null;
   volume: number | null;
   responsiveness: number | null;
-  interruptionSensitivity: number | null;
-  enableBackchannel: boolean | null;
-  backchannelFrequency: number | null;
-  ambientSound: string | null;
-  ambientSoundVolume: number | null;
+  interruption_sensitivity: number | null;
+  enable_backchannel: boolean | null;
+  backchannel_frequency: number | null;
+  ambient_sound: string | null;
+  ambient_sound_volume: number | null;
   language: string | null;
-  enableVoicemailDetection: boolean | null;
-  voicemailMessage: string | null;
-  voicemailDetectionTimeoutMs: number | null;
-  maxCallDurationMs: number | null;
-  endCallAfterSilenceMs: number | null;
-  beginMessageDelayMs: number | null;
-  normalizeForSpeech: boolean | null;
-  boostedKeywords: string[] | null;
-  reminderTriggerMs: number | null;
-  reminderMaxCount: number | null;
+  enable_voicemail_detection: boolean | null;
+  voicemail_message: string | null;
+  voicemail_detection_timeout_ms: number | null;
+  max_call_duration_ms: number | null;
+  end_call_after_silence_ms: number | null;
+  begin_message_delay_ms: number | null;
+  normalize_for_speech: boolean | null;
+  boosted_keywords: string[] | null;
+  reminder_trigger_ms: number | null;
+  reminder_max_count: number | null;
 }
 
 export interface CreateAgentData {
   name: string;
-  voiceType?: string;
+  voice_type?: string;
   personality?: string;
-  greetingMessage?: string;
-  scheduleStart?: string;
-  scheduleEnd?: string;
-  scheduleDays?: string[];
-  voiceId?: string;
-  voiceModel?: string;
-  voiceTemperature?: number;
-  voiceSpeed?: number;
+  greeting_message?: string;
+  schedule_start?: string;
+  schedule_end?: string;
+  schedule_days?: string[];
+  voice_id?: string;
+  voice_model?: string;
+  voice_temperature?: number;
+  voice_speed?: number;
   volume?: number;
   responsiveness?: number;
-  interruptionSensitivity?: number;
-  enableBackchannel?: boolean;
-  backchannelFrequency?: number;
-  ambientSound?: string;
-  ambientSoundVolume?: number;
+  interruption_sensitivity?: number;
+  enable_backchannel?: boolean;
+  backchannel_frequency?: number;
+  ambient_sound?: string;
+  ambient_sound_volume?: number;
   language?: string;
-  enableVoicemailDetection?: boolean;
-  voicemailMessage?: string;
-  voicemailDetectionTimeoutMs?: number;
-  maxCallDurationMs?: number;
-  endCallAfterSilenceMs?: number;
-  beginMessageDelayMs?: number;
-  normalizeForSpeech?: boolean;
-  boostedKeywords?: string[];
-  reminderTriggerMs?: number;
-  reminderMaxCount?: number;
+  enable_voicemail_detection?: boolean;
+  voicemail_message?: string;
+  voicemail_detection_timeout_ms?: number;
+  max_call_duration_ms?: number;
+  end_call_after_silence_ms?: number;
+  begin_message_delay_ms?: number;
+  normalize_for_speech?: boolean;
+  boosted_keywords?: string[];
+  reminder_trigger_ms?: number;
+  reminder_max_count?: number;
+}
+
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function mapAgentFromApi(raw: any): Agent {
+  const mapped: any = {};
+  for (const key of Object.keys(raw)) {
+    mapped[camelToSnake(key)] = raw[key];
+  }
+  return mapped as Agent;
 }
 
 export const useAgents = () => {
@@ -82,19 +94,22 @@ export const useAgents = () => {
 
   const { data: agents = [], isLoading: loading } = useQuery({
     queryKey: ['agents'],
-    queryFn: () => api.get<Agent[]>("/api/agents"),
+    queryFn: async () => {
+      const rawAgents = await api.get<any[]>("/api/agents");
+      return rawAgents.map(mapAgentFromApi);
+    },
     enabled: !!user,
   });
 
   const createMutation = useMutation({
     mutationFn: async (agentData: CreateAgentData) => {
-      const data = await api.post<{ agent: Agent }>("/api/retell-sync", {
+      const data = await api.post<{ agent: any }>("/api/retell-sync", {
         action: "create-agent",
         agentConfig: agentData,
       });
-      return data.agent;
+      return data.agent ? mapAgentFromApi(data.agent) : null;
     },
-    onSuccess: (agent, variables) => {
+    onSuccess: (_agent, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       toast({
         title: "Agent Created",
@@ -111,13 +126,13 @@ export const useAgents = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Agent> }) => {
-      const data = await api.post<{ agent: Agent }>("/api/retell-sync", {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateAgentData> }) => {
+      const data = await api.post<{ agent: any }>("/api/retell-sync", {
         action: "update-agent",
         agentId: id,
         agentConfig: updates,
       });
-      return data.agent;
+      return data.agent ? mapAgentFromApi(data.agent) : null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
@@ -168,7 +183,7 @@ export const useAgents = () => {
     }
   };
 
-  const updateAgent = async (id: string, updates: Partial<Agent>) => {
+  const updateAgent = async (id: string, updates: Partial<CreateAgentData>) => {
     try {
       return await updateMutation.mutateAsync({ id, updates });
     } catch {
@@ -186,7 +201,7 @@ export const useAgents = () => {
   };
 
   const toggleAgentStatus = async (id: string, isActive: boolean) => {
-    return updateAgent(id, { isActive });
+    return updateAgent(id, { is_active: isActive } as any);
   };
 
   return {

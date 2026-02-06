@@ -150,11 +150,11 @@ const Playground = () => {
       const agent = agents.find(a => a.id === selectedAgentId);
       if (agent) {
         setCustomPrompt(agent.personality || "");
-        setGreetingMessage(agent.greetingMessage || "Hello! How can I help you today?");
-        setSelectedVoice(agent.voiceId || "11labs-Adrian");
+        setGreetingMessage(agent.greeting_message || "Hello! How can I help you today?");
+        setSelectedVoice(agent.voice_id || "11labs-Adrian");
         setSelectedLanguage(agent.language || "en-US");
-        setVoiceTemperature(Number(agent.voiceTemperature) || 1);
-        setVoiceSpeed(Number(agent.voiceSpeed) || 1);
+        setVoiceTemperature(Number(agent.voice_temperature) || 1);
+        setVoiceSpeed(Number(agent.voice_speed) || 1);
       }
     }
   }, [selectedAgentId, agents]);
@@ -480,7 +480,7 @@ const Playground = () => {
                         <SelectItem value="custom">Custom Configuration</SelectItem>
                         {agents.map((agent) => (
                           <SelectItem key={agent.id} value={agent.id}>
-                            {agent.name} {agent.retellAgentId && "(Synced)"}
+                            {agent.name} {agent.retell_agent_id && "(Synced)"}
                           </SelectItem>
                         ))}
                       </SelectContent>

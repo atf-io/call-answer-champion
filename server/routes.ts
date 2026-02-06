@@ -967,8 +967,9 @@ async function getRetellCall(apiKey: string, callId: string) {
 }
 
 async function createRetellAgent(apiKey: string, userId: number, agentConfig: any) {
-  const retellConfig = buildRetellAgentConfig(agentConfig);
-  retellConfig.agent_name = agentConfig.name;
+  const normalized = normalizeAgentConfig(agentConfig);
+  const retellConfig = buildRetellAgentConfig(normalized);
+  retellConfig.agent_name = normalized.name;
 
   const response = await fetch(`${RETELL_BASE_URL}/create-agent`, {
     method: "POST",
@@ -988,29 +989,52 @@ async function createRetellAgent(apiKey: string, userId: number, agentConfig: an
 
   const dbAgent = await storage.createAgent({
     userId,
-    name: agentConfig.name,
+    name: normalized.name,
     retellAgentId: retellAgent.agent_id,
-    voiceType: agentConfig.voice_type,
-    personality: agentConfig.personality,
-    greetingMessage: agentConfig.greeting_message,
-    voiceId: agentConfig.voice_id,
-    voiceModel: agentConfig.voice_model,
-    language: agentConfig.language,
+    voiceType: normalized.voiceType,
+    personality: normalized.personality,
+    greetingMessage: normalized.greetingMessage,
+    voiceId: normalized.voiceId,
+    voiceModel: normalized.voiceModel,
+    language: normalized.language,
+    scheduleStart: normalized.scheduleStart,
+    scheduleEnd: normalized.scheduleEnd,
+    scheduleDays: normalized.scheduleDays,
+    voiceTemperature: normalized.voiceTemperature?.toString(),
+    voiceSpeed: normalized.voiceSpeed?.toString(),
+    volume: normalized.volume?.toString(),
+    responsiveness: normalized.responsiveness?.toString(),
+    interruptionSensitivity: normalized.interruptionSensitivity?.toString(),
+    enableBackchannel: normalized.enableBackchannel,
+    backchannelFrequency: normalized.backchannelFrequency?.toString(),
+    ambientSound: normalized.ambientSound,
+    ambientSoundVolume: normalized.ambientSoundVolume?.toString(),
+    enableVoicemailDetection: normalized.enableVoicemailDetection,
+    voicemailMessage: normalized.voicemailMessage,
+    voicemailDetectionTimeoutMs: normalized.voicemailDetectionTimeoutMs,
+    maxCallDurationMs: normalized.maxCallDurationMs,
+    endCallAfterSilenceMs: normalized.endCallAfterSilenceMs,
+    beginMessageDelayMs: normalized.beginMessageDelayMs,
+    normalizeForSpeech: normalized.normalizeForSpeech,
+    boostedKeywords: normalized.boostedKeywords,
+    reminderTriggerMs: normalized.reminderTriggerMs,
+    reminderMaxCount: normalized.reminderMaxCount,
   });
 
   return { agent: dbAgent, retellAgent };
 }
 
 async function updateRetellAgent(apiKey: string, userId: number, agentId: string, agentConfig: any) {
+  const normalized = normalizeAgentConfig(agentConfig);
   const existingAgent = await storage.getAgent(agentId, userId);
   if (!existingAgent) {
     throw new Error("Agent not found");
   }
 
   if (existingAgent.retellAgentId) {
-    const retellConfig = buildRetellAgentConfig(agentConfig);
-    if (agentConfig.name) {
-      retellConfig.agent_name = agentConfig.name;
+    const retellConfig = buildRetellAgentConfig(normalized);
+    if (normalized.name) {
+      retellConfig.agent_name = normalized.name;
     }
 
     const response = await fetch(`${RETELL_BASE_URL}/update-agent/${existingAgent.retellAgentId}`, {
@@ -1028,7 +1052,30 @@ async function updateRetellAgent(apiKey: string, userId: number, agentId: string
     }
   }
 
-  const updatedAgent = await storage.updateAgent(agentId, userId, agentConfig);
+  const numericFields = new Set([
+    'voiceTemperature', 'voiceSpeed', 'volume', 'responsiveness',
+    'interruptionSensitivity', 'backchannelFrequency', 'ambientSoundVolume',
+  ]);
+  const dbFields = [
+    'name', 'personality', 'language', 'voiceType', 'greetingMessage',
+    'scheduleStart', 'scheduleEnd', 'scheduleDays', 'isActive',
+    'voiceId', 'voiceModel', 'voiceTemperature', 'voiceSpeed',
+    'volume', 'responsiveness', 'interruptionSensitivity',
+    'enableBackchannel', 'backchannelFrequency', 'ambientSound',
+    'ambientSoundVolume', 'enableVoicemailDetection', 'voicemailMessage',
+    'voicemailDetectionTimeoutMs', 'maxCallDurationMs', 'endCallAfterSilenceMs',
+    'beginMessageDelayMs', 'normalizeForSpeech', 'boostedKeywords',
+    'reminderTriggerMs', 'reminderMaxCount',
+  ];
+
+  const dbUpdateData: any = {};
+  for (const field of dbFields) {
+    if (normalized[field] !== undefined) {
+      dbUpdateData[field] = numericFields.has(field) ? normalized[field]?.toString() : normalized[field];
+    }
+  }
+
+  const updatedAgent = await storage.updateAgent(agentId, userId, dbUpdateData);
   return { agent: updatedAgent };
 }
 
@@ -1278,6 +1325,22 @@ async function purchasePhoneNumber(apiKey: string, userId: number, areaCode?: st
     saved: savedPhone,
     message: `Successfully purchased ${phoneData.phone_number}`,
   };
+}
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+function normalizeAgentConfig(config: any): any {
+  const normalized: any = {};
+  for (const key of Object.keys(config)) {
+    const camelKey = snakeToCamel(key);
+    normalized[camelKey] = config[key];
+    if (camelKey !== key) {
+      normalized[key] = config[key];
+    }
+  }
+  return normalized;
 }
 
 function buildRetellAgentConfig(config: any) {

@@ -25,11 +25,11 @@ const Dashboard = () => {
     );
   }
 
-  const totalCalls = agents.reduce((acc, agent) => acc + agent.totalCalls, 0);
+  const totalCalls = agents.reduce((acc, agent) => acc + (agent.total_calls || 0), 0);
   const respondedReviews = reviews.filter((r) => r.status === "responded").length;
   const pendingReviews = reviews.filter((r) => r.status === "pending").length;
   const avgSatisfaction = agents.length > 0
-    ? (agents.reduce((acc, agent) => acc + Number(agent.satisfactionScore), 0) / agents.length).toFixed(1)
+    ? (agents.reduce((acc, agent) => acc + Number(agent.satisfaction_score || 0), 0) / agents.length).toFixed(1)
     : "0";
 
   const stats = [
@@ -49,7 +49,7 @@ const Dashboard = () => {
     },
     {
       title: "Active Agents",
-      value: agents.filter((a) => a.isActive).length.toString(),
+      value: agents.filter((a) => a.is_active).length.toString(),
       change: `${agents.length} total`,
       changeType: "neutral" as const,
       icon: Clock,
@@ -146,16 +146,16 @@ const Dashboard = () => {
                           <div>
                             <p className="text-sm font-medium">{agent.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {agent.totalCalls} calls
+                              {agent.total_calls} calls
                             </p>
                           </div>
                         </div>
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                          agent.isActive
+                          agent.is_active
                             ? "bg-success/10 text-success"
                             : "bg-muted text-muted-foreground"
                         }`}>
-                          {agent.isActive ? "active" : "inactive"}
+                          {agent.is_active ? "active" : "inactive"}
                         </span>
                       </div>
                     ))}
