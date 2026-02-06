@@ -966,10 +966,74 @@ async function getRetellCall(apiKey: string, callId: string) {
   return await response.json();
 }
 
+async function createRetellLlm(apiKey: string, config: any) {
+  const llmConfig: any = {};
+  if (config.greetingMessage || config.greeting_message) {
+    llmConfig.begin_message = config.greetingMessage || config.greeting_message;
+  }
+  if (config.personality) {
+    llmConfig.general_prompt = `You are a ${config.personality} AI assistant for a business. ${config.generalPrompt || config.general_prompt || ""}`.trim();
+  }
+  llmConfig.general_tools = [{ type: "end_call", name: "end_call", description: "End the call with the user." }];
+
+  const response = await fetch(`${RETELL_BASE_URL}/create-retell-llm`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(llmConfig),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to create Retell LLM: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+async function updateRetellLlm(apiKey: string, llmId: string, config: any) {
+  const llmConfig: any = {};
+  if (config.greetingMessage || config.greeting_message) {
+    llmConfig.begin_message = config.greetingMessage || config.greeting_message;
+  }
+  if (config.personality) {
+    llmConfig.general_prompt = `You are a ${config.personality} AI assistant for a business. ${config.generalPrompt || config.general_prompt || ""}`.trim();
+  }
+
+  const response = await fetch(`${RETELL_BASE_URL}/update-retell-llm/${llmId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(llmConfig),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update Retell LLM: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 async function createRetellAgent(apiKey: string, userId: number, agentConfig: any) {
   const normalized = normalizeAgentConfig(agentConfig);
+
+  const retellLlm = await createRetellLlm(apiKey, normalized);
+
   const retellConfig = buildRetellAgentConfig(normalized);
   retellConfig.agent_name = normalized.name;
+  retellConfig.response_engine = {
+    type: "retell-llm",
+    llm_id: retellLlm.llm_id,
+  };
+
+  if (!retellConfig.voice_id) {
+    retellConfig.voice_id = normalized.voiceId || normalized.voice_id || normalized.voiceType || normalized.voice_type || "11labs-Emma";
+  }
 
   const response = await fetch(`${RETELL_BASE_URL}/create-agent`, {
     method: "POST",
@@ -991,6 +1055,7 @@ async function createRetellAgent(apiKey: string, userId: number, agentConfig: an
     userId,
     name: normalized.name,
     retellAgentId: retellAgent.agent_id,
+    retellLlmId: retellLlm.llm_id,
     voiceType: normalized.voiceType,
     personality: normalized.personality,
     greetingMessage: normalized.greetingMessage,
@@ -1029,6 +1094,14 @@ async function updateRetellAgent(apiKey: string, userId: number, agentId: string
   const existingAgent = await storage.getAgent(agentId, userId);
   if (!existingAgent) {
     throw new Error("Agent not found");
+  }
+
+  if (existingAgent.retellLlmId) {
+    try {
+      await updateRetellLlm(apiKey, existingAgent.retellLlmId, normalized);
+    } catch (err) {
+      console.error("Failed to update Retell LLM:", err);
+    }
   }
 
   if (existingAgent.retellAgentId) {

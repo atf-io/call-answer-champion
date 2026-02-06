@@ -41,6 +41,7 @@ export const aiAgents = pgTable("ai_agents", {
   userId: text("user_id").notNull(),
   name: text("name").notNull(),
   retellAgentId: text("retell_agent_id"),
+  retellLlmId: text("retell_llm_id"),
   voiceType: text("voice_type").default("11labs-Emma"),
   personality: text("personality").default("friendly and professional"),
   greetingMessage: text("greeting_message").default("Hello! How can I help you today?"),
