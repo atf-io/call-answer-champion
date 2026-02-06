@@ -506,48 +506,81 @@ export function registerRoutes(app: Express) {
         },
         body: JSON.stringify({
           url: formattedUrl,
-          formats: [{
-            type: "json",
+          formats: ["json"],
+          jsonOptions: {
             schema: {
               type: "object",
               properties: {
-                business_name: { type: "string" },
-                business_description: { type: "string" },
-                phone: { type: "string" },
-                email: { type: "string" },
-                address: { type: "string" },
-                services: { type: "array", items: { type: "string" } },
-                team_info: { type: "string" },
-                faqs: { type: "array", items: { type: "object", properties: { question: { type: "string" }, answer: { type: "string" } } } },
-                social_links: { type: "object" },
+                business_name: { type: "string", description: "The official business name" },
+                tagline: { type: "string", description: "Business tagline or slogan" },
+                business_description: { type: "string", description: "A comprehensive description of what the business does, its mission, and value proposition" },
+                phone: { type: "string", description: "Primary business phone number" },
+                email: { type: "string", description: "Primary business email address" },
+                address: { type: "string", description: "Full business address including street, city, state, zip" },
+                services: { type: "array", items: { type: "string" }, description: "List of all services offered" },
+                specialties: { type: "array", items: { type: "string" }, description: "Specialty services or areas of expertise" },
+                equipment_brands: { type: "array", items: { type: "string" }, description: "Equipment brands or product lines the business works with" },
+                certifications: { type: "array", items: { type: "string" }, description: "Professional certifications, licenses, and accreditations" },
+                guarantees: { type: "array", items: { type: "string" }, description: "Guarantees, warranties, or satisfaction promises" },
+                payment_methods: { type: "array", items: { type: "string" }, description: "Accepted payment methods and financing options" },
+                team_info: { type: "string", description: "Information about the team, number of employees, and key personnel" },
+                years_in_business: { type: "string", description: "How long the business has been operating" },
+                pricing_info: { type: "string", description: "Any pricing details, special offers, or financing options mentioned" },
+                business_hours: { type: "object", description: "Business operating hours by day of the week" },
+                emergency_service: { type: "boolean", description: "Whether 24/7 or emergency service is available" },
+                service_area: { type: "object", properties: { cities: { type: "array", items: { type: "string" } }, radius: { type: "string" } }, description: "Geographic service area including cities and radius" },
+                locations: { type: "array", items: { type: "string" }, description: "Multiple office or store locations" },
+                faqs: { type: "array", items: { type: "object", properties: { question: { type: "string" }, answer: { type: "string" } } }, description: "Frequently asked questions and answers" },
+                social_links: { type: "object", description: "Social media and review site profile URLs" },
               }
-            }
-          }],
+            },
+            prompt: "Extract all vital business information from this webpage including contact details, services, hours, certifications, team info, pricing, service area, and FAQs. Be thorough and capture as much business data as possible."
+          },
           onlyMainContent: false,
         }),
       });
 
       const extractionData = await extractionResponse.json();
 
+      if (!extractionResponse.ok) {
+        console.error("Firecrawl extraction failed:", extractionData);
+      }
+
       const branding = brandingData.data?.branding || brandingData.branding || {};
       const metadata = brandingData.data?.metadata || brandingData.metadata || {};
-      const extractedJson = extractionData.data?.json || extractionData.json || {};
+      const markdown = brandingData.data?.markdown || brandingData.markdown || "";
+      const extractedJson = (extractionResponse.ok && extractionData.success !== false)
+        ? (extractionData.data?.json || extractionData.json || {})
+        : {};
 
       const businessData = {
         success: true,
         data: {
           business_name: extractedJson.business_name || metadata.title || "",
+          tagline: extractedJson.tagline || "",
           business_description: extractedJson.business_description || metadata.description || "",
           phone: extractedJson.phone || "",
           email: extractedJson.email || "",
           address: extractedJson.address || "",
           website: formattedUrl,
           services: extractedJson.services || [],
+          specialties: extractedJson.specialties || [],
+          equipment_brands: extractedJson.equipment_brands || [],
+          certifications: extractedJson.certifications || [],
+          guarantees: extractedJson.guarantees || [],
+          payment_methods: extractedJson.payment_methods || [],
           team_info: extractedJson.team_info || "",
+          years_in_business: extractedJson.years_in_business || "",
+          pricing_info: extractedJson.pricing_info || "",
+          business_hours: extractedJson.business_hours || {},
+          emergency_service: extractedJson.emergency_service || false,
+          service_area: extractedJson.service_area || {},
+          locations: extractedJson.locations || [],
           faqs: extractedJson.faqs || [],
           logo_url: branding.images?.logo || branding.logo || "",
           colors: branding.colors || {},
           social_links: extractedJson.social_links || {},
+          raw_markdown: markdown,
         }
       };
 
