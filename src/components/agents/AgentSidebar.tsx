@@ -13,6 +13,10 @@ import {
   CreditCard,
   Settings,
   ArrowLeft,
+  Mic,
+  TestTube,
+  Megaphone,
+  Users,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,7 +35,9 @@ const navigation: NavGroup[] = [
     label: "Build",
     items: [
       { name: "Agents", href: "/dashboard/agents", icon: Bot },
-      { name: "Knowledge Base", href: "/dashboard/agents/knowledge", icon: BookOpen },
+      { name: "Business Profile", href: "/dashboard/agents/knowledge", icon: BookOpen },
+      { name: "Voice AI Playground", href: "/dashboard/agents/playground", icon: Mic },
+      { name: "SMS Simulator", href: "/dashboard/agents/sms-simulator", icon: TestTube },
     ],
   },
   {
@@ -39,14 +45,17 @@ const navigation: NavGroup[] = [
     items: [
       { name: "Phone Numbers", href: "/dashboard/agents/phone-numbers", icon: Phone },
       { name: "SMS / Text", href: "/dashboard/agents/sms", icon: MessageSquare },
+      { name: "Campaigns", href: "/dashboard/agents/campaigns", icon: Megaphone },
     ],
   },
   {
     label: "Monitor",
     items: [
+      { name: "Contacts", href: "/dashboard/agents/contacts", icon: Users },
       { name: "Call History", href: "/dashboard/agents/call-history", icon: History },
       { name: "Chat History", href: "/dashboard/agents/chat-history", icon: MessageSquare },
       { name: "Analytics", href: "/dashboard/agents/analytics", icon: BarChart3 },
+      { name: "SMS Analytics", href: "/dashboard/agents/sms-analytics", icon: BarChart3 },
       { name: "AI Quality Assurance", href: "/dashboard/agents/quality", icon: ShieldCheck },
       { name: "Alerting", href: "/dashboard/agents/alerting", icon: Bell },
     ],
@@ -65,11 +74,11 @@ const AgentSidebar = () => {
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
-      {/* Header */}
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border gap-3">
         <Link
           to="/dashboard"
-          className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+          className="p-2 rounded-lg hover-elevate transition-colors"
+          data-testid="link-back-dashboard"
         >
           <ArrowLeft className="w-4 h-4 text-sidebar-foreground/70" />
         </Link>
@@ -81,7 +90,6 @@ const AgentSidebar = () => {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         {navigation.map((group) => (
           <div key={group.label}>
@@ -95,11 +103,12 @@ const AgentSidebar = () => {
                   <Link
                     key={item.name}
                     to={item.href}
+                    data-testid={`link-nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                       isActive
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/70 hover-elevate"
                     )}
                   >
                     <item.icon className="w-5 h-5" />

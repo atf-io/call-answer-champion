@@ -4,6 +4,17 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **GitHub Sync - SMS & Campaign Features**: Synced 20+ Lovable commits including:
+  - SMS agent editing with full CRUD (Prompt, Settings, Campaigns, Test tabs)
+  - Campaigns page with campaign management placeholder
+  - Contacts page with stats cards and contact table
+  - SMS Analytics page placeholder
+  - SMS Simulator page placeholder
+  - VariableInserter component for campaign template variables
+  - SmsCampaigns component for agent-level campaign management
+  - Updated AgentSidebar with grouped navigation (Build/Deploy/Monitor/System)
+  - Renamed Knowledge Base to Business Profile
+  - Created useSmsAgents and useSmsCampaigns hooks using Express API
 - **Hybrid Authentication System**: Implemented dual authentication supporting:
   - **Google OAuth** via Replit Auth (OIDC) - redirects to `/api/login`
   - **Email/Password** login with bcrypt password hashing - uses `/api/auth/login` and `/api/auth/register`
@@ -35,6 +46,7 @@ VoiceHub is an AI-powered business communication platform that integrates with R
 - `src/hooks/` - React Query hooks for all data fetching
   - useAgents, useCallLogs, useKnowledgeBase, usePhoneNumbers
   - useReviews, useSettings, useRetell
+  - useSmsAgents, useSmsCampaigns (Express API integration)
 - `src/lib/api.ts` - API client for server communication
 
 ### Key API Endpoints

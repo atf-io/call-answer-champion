@@ -59,8 +59,8 @@ const KnowledgeBase = () => {
 
   return (
     <AgentLayout
-      title="Knowledge Base"
-      description="Add documents and information for your agents to reference during calls and SMS conversations"
+      title="Business Profile"
+      description="Scrape your website to automatically populate your business profile for AI agents"
     >
       <div className="space-y-6">
         {/* Search */}
