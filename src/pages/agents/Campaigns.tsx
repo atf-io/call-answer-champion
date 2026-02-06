@@ -50,6 +50,24 @@ import VariableInserter from "@/components/campaigns/VariableInserter";
 
 type ViewMode = "list" | "detail";
 
+const minutesToDhm = (totalMinutes: number) => ({
+  days: Math.floor(totalMinutes / 1440),
+  hours: Math.floor((totalMinutes % 1440) / 60),
+  minutes: totalMinutes % 60,
+});
+
+const dhmToMinutes = (days: number, hours: number, minutes: number) =>
+  days * 1440 + hours * 60 + minutes;
+
+const formatDelay = (totalMinutes: number) => {
+  const { days, hours, minutes } = minutesToDhm(totalMinutes);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+  return parts.join(" ");
+};
+
 interface CampaignPreset {
   name: string;
   description: string;
@@ -156,11 +174,15 @@ const Campaigns = () => {
   const [isCloning, setIsCloning] = useState(false);
 
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
-  const [editStepDelay, setEditStepDelay] = useState(0);
+  const [editDelayDays, setEditDelayDays] = useState(0);
+  const [editDelayHours, setEditDelayHours] = useState(0);
+  const [editDelayMinutes, setEditDelayMinutes] = useState(0);
   const [editStepMessage, setEditStepMessage] = useState("");
 
   const [addStepOpen, setAddStepOpen] = useState(false);
-  const [newStepDelay, setNewStepDelay] = useState(60);
+  const [newDelayDays, setNewDelayDays] = useState(0);
+  const [newDelayHours, setNewDelayHours] = useState(0);
+  const [newDelayMinutes, setNewDelayMinutes] = useState(0);
   const [newStepMessage, setNewStepMessage] = useState("");
 
   const openCampaignDetail = async (campaign: SmsCampaign) => {
@@ -315,10 +337,12 @@ const Campaigns = () => {
     await addStep({
       campaign_id: selectedCampaign.id,
       step_order: stepOrder,
-      delay_minutes: newStepDelay,
+      delay_minutes: dhmToMinutes(newDelayDays, newDelayHours, newDelayMinutes),
       message_template: newStepMessage.trim(),
     });
-    setNewStepDelay(60);
+    setNewDelayDays(0);
+    setNewDelayHours(0);
+    setNewDelayMinutes(0);
     setNewStepMessage("");
     setAddStepOpen(false);
     await refreshSelected();
@@ -326,14 +350,17 @@ const Campaigns = () => {
 
   const startEditStep = (step: CampaignStep) => {
     setEditingStepId(step.id);
-    setEditStepDelay(step.delay_minutes);
+    const dhm = minutesToDhm(step.delay_minutes);
+    setEditDelayDays(dhm.days);
+    setEditDelayHours(dhm.hours);
+    setEditDelayMinutes(dhm.minutes);
     setEditStepMessage(step.message_template);
   };
 
   const handleSaveStep = async () => {
     if (!editingStepId) return;
     await updateStep(editingStepId, {
-      delay_minutes: editStepDelay,
+      delay_minutes: dhmToMinutes(editDelayDays, editDelayHours, editDelayMinutes),
       message_template: editStepMessage,
     });
     setEditingStepId(null);
@@ -559,14 +586,21 @@ const Campaigns = () => {
                                   <span className="text-sm font-medium">Step {step.step_order}</span>
                                 </div>
                                 <div className="space-y-2">
-                                  <Label>Delay (minutes)</Label>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={editStepDelay}
-                                    onChange={(e) => setEditStepDelay(Number(e.target.value))}
-                                    data-testid="input-edit-step-delay"
-                                  />
+                                  <Label>Delay</Label>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <Label className="text-xs text-muted-foreground">Days</Label>
+                                      <Input type="number" min={0} value={editDelayDays} onChange={(e) => setEditDelayDays(Number(e.target.value) || 0)} data-testid="input-edit-step-days" />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs text-muted-foreground">Hours</Label>
+                                      <Input type="number" min={0} max={23} value={editDelayHours} onChange={(e) => setEditDelayHours(Number(e.target.value) || 0)} data-testid="input-edit-step-hours" />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs text-muted-foreground">Minutes</Label>
+                                      <Input type="number" min={0} max={59} value={editDelayMinutes} onChange={(e) => setEditDelayMinutes(Number(e.target.value) || 0)} data-testid="input-edit-step-minutes" />
+                                    </div>
+                                  </div>
                                 </div>
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -602,7 +636,7 @@ const Campaigns = () => {
                                     </span>
                                     <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-step-delay-${step.id}`}>
                                       <Clock className="w-3 h-3" />
-                                      {step.delay_minutes} min delay
+                                      {formatDelay(step.delay_minutes)} delay
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-1">
@@ -717,7 +751,7 @@ const Campaigns = () => {
                 <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
                   {selectedPreset.steps.map((s, i) => (
                     <div key={i} className="text-xs space-y-0.5">
-                      <span className="font-medium text-muted-foreground">Step {i + 1} ({s.delay_minutes} min delay)</span>
+                      <span className="font-medium text-muted-foreground">Step {i + 1} ({formatDelay(s.delay_minutes)} delay)</span>
                       <p className="text-foreground whitespace-pre-wrap">{s.message_template}</p>
                     </div>
                   ))}
@@ -756,15 +790,21 @@ const Campaigns = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="step-delay">Delay (minutes)</Label>
-              <Input
-                id="step-delay"
-                type="number"
-                min={0}
-                value={newStepDelay}
-                onChange={(e) => setNewStepDelay(Number(e.target.value))}
-                data-testid="input-new-step-delay"
-              />
+              <Label>Delay</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Days</Label>
+                  <Input type="number" min={0} value={newDelayDays} onChange={(e) => setNewDelayDays(Number(e.target.value) || 0)} data-testid="input-new-step-days" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Hours</Label>
+                  <Input type="number" min={0} max={23} value={newDelayHours} onChange={(e) => setNewDelayHours(Number(e.target.value) || 0)} data-testid="input-new-step-hours" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Minutes</Label>
+                  <Input type="number" min={0} max={59} value={newDelayMinutes} onChange={(e) => setNewDelayMinutes(Number(e.target.value) || 0)} data-testid="input-new-step-minutes" />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Time to wait before sending this message after the previous step.
               </p>
