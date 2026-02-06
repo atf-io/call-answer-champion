@@ -6,7 +6,6 @@ import {
   Phone,
   Star,
   Settings,
-  BarChart3,
   HelpCircle,
   LogOut,
 } from "lucide-react";
@@ -15,7 +14,6 @@ const navigation = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "AI Agents", href: "/dashboard/agents", icon: Phone },
   { name: "Reviews", href: "/dashboard/reviews", icon: Star },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
 ];
 
 const bottomNavigation = [

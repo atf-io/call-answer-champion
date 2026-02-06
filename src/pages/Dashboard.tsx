@@ -3,10 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import StatsCard from "@/components/dashboard/StatsCard";
-import LeadAnalytics from "@/components/dashboard/LeadAnalytics";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Star, Clock, TrendingUp, Plus, ArrowRight, Loader2, BarChart3 } from "lucide-react";
+import { Phone, Star, Clock, TrendingUp, Plus, ArrowRight, Loader2 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useReviews } from "@/hooks/useReviews";
 import { Link } from "react-router-dom";
@@ -84,19 +82,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
-              <TrendingUp className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2" data-testid="tab-analytics">
-              <BarChart3 className="w-4 h-4" />
-              Lead Analytics
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
+        <div className="space-y-6">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {stats.map((stat) => (
                 <StatsCard key={stat.title} {...stat} />
@@ -234,12 +220,7 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="analytics">
-            <LeadAnalytics />
-          </TabsContent>
-        </Tabs>
+        </div>
       </div>
     </DashboardLayout>
   );
