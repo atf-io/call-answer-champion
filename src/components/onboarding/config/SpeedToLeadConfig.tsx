@@ -16,11 +16,16 @@ interface SpeedToLeadConfigProps {
   businessProfile: BusinessProfile;
 }
 
-const VOICE_TYPES = [
-  "Professional Female",
-  "Professional Male",
-  "Friendly Female",
-  "Friendly Male",
+const VOICE_OPTIONS = [
+  { id: "11labs-Adrian", name: "Adrian - Professional Male", provider: "ElevenLabs" },
+  { id: "11labs-Amy", name: "Amy - Friendly Female", provider: "ElevenLabs" },
+  { id: "11labs-Brian", name: "Brian - Warm Male", provider: "ElevenLabs" },
+  { id: "11labs-Emma", name: "Emma - Professional Female", provider: "ElevenLabs" },
+  { id: "openai-Alloy", name: "Alloy - Neutral", provider: "OpenAI" },
+  { id: "openai-Echo", name: "Echo - Conversational Male", provider: "OpenAI" },
+  { id: "openai-Nova", name: "Nova - Friendly Female", provider: "OpenAI" },
+  { id: "openai-Shimmer", name: "Shimmer - Warm Female", provider: "OpenAI" },
+  { id: "openai-Onyx", name: "Onyx - Deep Male", provider: "OpenAI" },
 ];
 
 const COMMON_SOURCES = [
@@ -76,7 +81,7 @@ const SpeedToLeadConfig = ({ settings, onSettingsChange, businessProfile }: Spee
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="voice-type">Voice Type</Label>
+          <Label htmlFor="voice-type">Voice</Label>
           <Select
             value={settings.voiceType}
             onValueChange={(value) => handleChange("voiceType", value)}
@@ -85,9 +90,9 @@ const SpeedToLeadConfig = ({ settings, onSettingsChange, businessProfile }: Spee
               <SelectValue placeholder="Select voice" />
             </SelectTrigger>
             <SelectContent>
-              {VOICE_TYPES.map((voice) => (
-                <SelectItem key={voice} value={voice}>
-                  {voice}
+              {VOICE_OPTIONS.map((voice) => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  {voice.name}
                 </SelectItem>
               ))}
             </SelectContent>
