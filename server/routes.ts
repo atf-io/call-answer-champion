@@ -932,6 +932,10 @@ export function registerRoutes(app: Express) {
           break;
         }
 
+        case "sync-agents-from-retell":
+          result = await syncAgentsFromRetell(RETELL_API_KEY, userId);
+          break;
+
         case "sync-calls":
           result = await syncCallsToDatabase(RETELL_API_KEY, userId, agentId, limit);
           break;
@@ -1549,6 +1553,62 @@ async function updateRetellLlm(apiKey: string, llmId: string, config: any) {
   }
 
   return await response.json();
+}
+
+async function syncAgentsFromRetell(apiKey: string, userId: any) {
+  const { agents: retellAgents } = await listRetellAgents(apiKey);
+  
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const retellAgent of retellAgents) {
+    const existingAgent = await storage.getAgentByRetellId(retellAgent.agent_id, String(userId));
+
+    const agentData: any = {
+      name: retellAgent.agent_name || "Unnamed Agent",
+      retellAgentId: retellAgent.agent_id,
+      voiceId: retellAgent.voice_id || null,
+      voiceModel: retellAgent.voice_model || "eleven_turbo_v2",
+      voiceTemperature: retellAgent.voice_temperature?.toString() || "1",
+      voiceSpeed: retellAgent.voice_speed?.toString() || "1",
+      volume: retellAgent.volume?.toString() || "1",
+      responsiveness: retellAgent.responsiveness?.toString() || "1",
+      interruptionSensitivity: retellAgent.interruption_sensitivity?.toString() || "1",
+      enableBackchannel: retellAgent.enable_backchannel ?? true,
+      backchannelFrequency: retellAgent.backchannel_frequency?.toString() || "0.9",
+      ambientSound: retellAgent.ambient_sound || null,
+      ambientSoundVolume: retellAgent.ambient_sound_volume?.toString() || "1",
+      language: retellAgent.language || "en-US",
+      beginMessageDelayMs: retellAgent.begin_message_delay_ms || 1000,
+      reminderTriggerMs: retellAgent.reminder_trigger_ms || 10000,
+      reminderMaxCount: retellAgent.reminder_max_count || 2,
+      boostedKeywords: retellAgent.boosted_keywords || null,
+    };
+
+    if (retellAgent.response_engine?.llm_id) {
+      agentData.retellLlmId = retellAgent.response_engine.llm_id;
+    }
+
+    if (existingAgent) {
+      await storage.updateAgent(existingAgent.id, String(userId), agentData);
+      updated++;
+    } else {
+      await storage.createAgent({
+        userId: String(userId),
+        ...agentData,
+      });
+      created++;
+    }
+  }
+
+  return { 
+    message: `Sync complete: ${created} new agents imported, ${updated} existing agents updated`,
+    created,
+    updated,
+    skipped,
+    total: retellAgents.length
+  };
 }
 
 async function createRetellAgent(apiKey: string, userId: number, agentConfig: any) {

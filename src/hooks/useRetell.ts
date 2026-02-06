@@ -102,6 +102,28 @@ export const useRetell = () => {
     }
   }, [invokeRetellSync, toast]);
 
+  const syncAgentsFromRetell = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const data = await invokeRetellSync("sync-agents-from-retell") as { message: string; created: number; updated: number; total: number };
+      toast({
+        title: "Sync Complete",
+        description: data.message,
+      });
+      return data;
+    } catch (error) {
+      console.error("Failed to sync agents from Retell:", error);
+      toast({
+        variant: "destructive",
+        title: "Sync Failed",
+        description: error instanceof Error ? error.message : "Failed to sync agents from Retell",
+      });
+      return null;
+    } finally {
+      setSyncing(false);
+    }
+  }, [invokeRetellSync, toast]);
+
   const syncCalls = useCallback(async (agentId?: string, limit: number = 100) => {
     setSyncing(true);
     try {
@@ -192,6 +214,7 @@ export const useRetell = () => {
     fetchAgents,
     fetchCalls,
     syncCalls,
+    syncAgentsFromRetell,
     fetchAnalytics,
     fetchLiveStatus,
     getCallDetails,

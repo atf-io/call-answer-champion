@@ -39,7 +39,7 @@ const agentTypes = [
 const AgentsList = () => {
   const navigate = useNavigate();
   const { agents, loading, toggleAgentStatus, updateAgent, refetch } = useAgents();
-  const { liveCalls, fetchLiveStatus, fetchAgents: fetchRetellAgents, loading: retellLoading } = useRetell();
+  const { liveCalls, fetchLiveStatus, syncAgentsFromRetell, syncing: retellSyncing, fetchAgents: fetchRetellAgents, loading: retellLoading } = useRetell();
   const [selectedAgentType, setSelectedAgentType] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [syncingAgentId, setSyncingAgentId] = useState<string | null>(null);
@@ -60,6 +60,13 @@ const AgentsList = () => {
     setIsCreateOpen(false);
     setSelectedAgentType(null);
     refetch();
+  };
+
+  const handleSyncFromRetell = async () => {
+    const result = await syncAgentsFromRetell();
+    if (result) {
+      refetch();
+    }
   };
 
   const handleSyncToRetell = async (agentId: string) => {
@@ -270,6 +277,22 @@ const AgentsList = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleSyncFromRetell}
+              disabled={retellSyncing}
+              data-testid="button-sync-from-retell"
+            >
+              {retellSyncing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {retellSyncing ? "Syncing..." : "Sync from Retell AI"}
+            </Button>
           </div>
         </div>
       </div>

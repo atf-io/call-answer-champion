@@ -445,10 +445,10 @@ const AgentEdit = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <Label>Voice Temperature</Label>
-                    <span className="text-sm text-muted-foreground">{(formData.voice_temperature ?? 1).toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">{Number(formData.voice_temperature ?? 1).toFixed(1)}</span>
                   </div>
                   <Slider
-                    value={[formData.voice_temperature ?? 1]}
+                    value={[Number(formData.voice_temperature ?? 1)]}
                     onValueChange={([value]) => handleChange({ voice_temperature: value })}
                     min={0}
                     max={2}
@@ -460,10 +460,10 @@ const AgentEdit = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <Label>Voice Speed</Label>
-                    <span className="text-sm text-muted-foreground">{(formData.voice_speed ?? 1).toFixed(1)}x</span>
+                    <span className="text-sm text-muted-foreground">{Number(formData.voice_speed ?? 1).toFixed(1)}x</span>
                   </div>
                   <Slider
-                    value={[formData.voice_speed ?? 1]}
+                    value={[Number(formData.voice_speed ?? 1)]}
                     onValueChange={([value]) => handleChange({ voice_speed: value })}
                     min={0.5}
                     max={2}
@@ -474,10 +474,10 @@ const AgentEdit = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <Label>Volume</Label>
-                    <span className="text-sm text-muted-foreground">{((formData.volume ?? 1) * 100).toFixed(0)}%</span>
+                    <span className="text-sm text-muted-foreground">{(Number(formData.volume ?? 1) * 100).toFixed(0)}%</span>
                   </div>
                   <Slider
-                    value={[formData.volume ?? 1]}
+                    value={[Number(formData.volume ?? 1)]}
                     onValueChange={([value]) => handleChange({ volume: value })}
                     min={0}
                     max={2}
@@ -509,10 +509,10 @@ const AgentEdit = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <Label>Ambient Volume</Label>
-                        <span className="text-sm text-muted-foreground">{((formData.ambient_sound_volume ?? 1) * 100).toFixed(0)}%</span>
+                        <span className="text-sm text-muted-foreground">{(Number(formData.ambient_sound_volume ?? 1) * 100).toFixed(0)}%</span>
                       </div>
                       <Slider
-                        value={[formData.ambient_sound_volume ?? 1]}
+                        value={[Number(formData.ambient_sound_volume ?? 1)]}
                         onValueChange={([value]) => handleChange({ ambient_sound_volume: value })}
                         min={0}
                         max={2}
@@ -547,10 +547,10 @@ const AgentEdit = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <Label>Responsiveness</Label>
-                    <span className="text-sm text-muted-foreground">{(formData.responsiveness ?? 1).toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">{Number(formData.responsiveness ?? 1).toFixed(1)}</span>
                   </div>
                   <Slider
-                    value={[formData.responsiveness ?? 1]}
+                    value={[Number(formData.responsiveness ?? 1)]}
                     onValueChange={([value]) => handleChange({ responsiveness: value })}
                     min={0}
                     max={1}
@@ -562,10 +562,10 @@ const AgentEdit = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <Label>Interruption Sensitivity</Label>
-                    <span className="text-sm text-muted-foreground">{(formData.interruption_sensitivity ?? 1).toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">{Number(formData.interruption_sensitivity ?? 1).toFixed(1)}</span>
                   </div>
                   <Slider
-                    value={[formData.interruption_sensitivity ?? 1]}
+                    value={[Number(formData.interruption_sensitivity ?? 1)]}
                     onValueChange={([value]) => handleChange({ interruption_sensitivity: value })}
                     min={0}
                     max={1}
@@ -589,10 +589,10 @@ const AgentEdit = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <Label>Backchannel Frequency</Label>
-                      <span className="text-sm text-muted-foreground">{(formData.backchannel_frequency ?? 0.9).toFixed(1)}</span>
+                      <span className="text-sm text-muted-foreground">{Number(formData.backchannel_frequency ?? 0.9).toFixed(1)}</span>
                     </div>
                     <Slider
-                      value={[formData.backchannel_frequency ?? 0.9]}
+                      value={[Number(formData.backchannel_frequency ?? 0.9)]}
                       onValueChange={([value]) => handleChange({ backchannel_frequency: value })}
                       min={0}
                       max={1}
