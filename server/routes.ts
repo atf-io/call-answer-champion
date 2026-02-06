@@ -526,6 +526,178 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // ===================== WEBHOOK ENDPOINTS =====================
+  // Public endpoints authenticated via per-tenant secret key in query string or X-API-KEY header
+
+  async function validateWebhookKey(req: any, source: string): Promise<string | null> {
+    const key = req.query.key || req.headers["x-api-key"];
+    if (!key) return null;
+    const secret = await storage.getWebhookSecretByKey(key as string, source);
+    if (!secret) {
+      const genericSecret = await storage.getWebhookSecretByKey(key as string, "all");
+      if (!genericSecret) return null;
+      return genericSecret.userId;
+    }
+    return secret.userId;
+  }
+
+  function extractAngiLead(payload: any) {
+    const firstName = payload.first_name || payload.firstName || "";
+    const lastName = payload.last_name || payload.lastName || "";
+    const name = `${firstName} ${lastName}`.trim() || "Angi Lead";
+    const phone = payload.phone_number || payload.phone || payload.phoneNumber || null;
+    const email = payload.email || null;
+    const category = payload.category || payload.task_name || payload.service || null;
+    return { name, phone, email, tags: category ? [category] : ["angi-lead"], notes: payload.comments || payload.description || null };
+  }
+
+  function extractGoogleLsaLead(payload: any) {
+    let name = "Google LSA Lead";
+    let phone = null;
+    let email = null;
+    if (payload.user_column_data && Array.isArray(payload.user_column_data)) {
+      for (const field of payload.user_column_data) {
+        if (field.column_id === "FULL_NAME") name = field.string_value || name;
+        if (field.column_id === "PHONE_NUMBER") phone = field.string_value;
+        if (field.column_id === "EMAIL") email = field.string_value;
+      }
+    } else {
+      name = payload.name || payload.customer_name || name;
+      phone = payload.phone || payload.phone_number || null;
+      email = payload.email || null;
+    }
+    return { name, phone, email, tags: ["google-lsa"], notes: payload.lead_id ? `Google Lead ID: ${payload.lead_id}` : null };
+  }
+
+  function extractGenericLead(payload: any, source: string) {
+    const name = payload.name || payload.first_name || payload.customer_name || `${source} Lead`;
+    const phone = payload.phone || payload.phone_number || payload.phoneNumber || null;
+    const email = payload.email || null;
+    return { name, phone, email, tags: [source], notes: payload.notes || payload.comments || payload.description || null };
+  }
+
+  async function processWebhook(req: any, res: any, source: string, extractFn: (p: any) => any) {
+    try {
+      const payload = req.body;
+      const userId = await validateWebhookKey(req, source);
+      if (!userId) {
+        return res.status(401).json({ error: "Invalid or missing webhook key. Include ?key=YOUR_KEY in the URL or X-API-KEY header." });
+      }
+
+      console.log(`${source} webhook received for user ${userId}:`, JSON.stringify(payload).substring(0, 200));
+
+      const webhookLog = await storage.createWebhookLog({
+        userId,
+        source,
+        eventType: "new_lead",
+        payload,
+        status: "received",
+        isTest: payload.is_test === true || payload.isTest === true,
+      });
+
+      try {
+        const leadData = extractFn(payload);
+        const contact = await storage.createContact({
+          userId,
+          name: leadData.name,
+          phone: leadData.phone,
+          email: leadData.email,
+          source,
+          status: "new",
+          tags: leadData.tags,
+          notes: leadData.notes,
+        });
+
+        await storage.updateWebhookLog(webhookLog.id, { status: "processed", contactId: contact.id });
+        res.json({ success: true, contactId: contact.id, webhookLogId: webhookLog.id });
+      } catch (processError: any) {
+        await storage.updateWebhookLog(webhookLog.id, { status: "error", errorMessage: processError.message });
+        res.json({ success: true, webhookLogId: webhookLog.id, warning: "Lead logged but contact creation failed" });
+      }
+    } catch (error: any) {
+      console.error(`${source} webhook error:`, error);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
+  }
+
+  app.post("/api/webhooks/angi", (req, res) => processWebhook(req, res, "angi", extractAngiLead));
+  app.post("/api/webhooks/google-lsa", (req, res) => processWebhook(req, res, "google-lsa", extractGoogleLsaLead));
+  app.post("/api/webhooks/:source", (req, res) => processWebhook(req, res, req.params.source, (p) => extractGenericLead(p, req.params.source)));
+
+  // Webhook logs (authenticated)
+  app.get("/api/webhook-logs", requireAuth, async (req, res) => {
+    try {
+      const logs = await storage.getWebhookLogs(req.user!.id);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch webhook logs" });
+    }
+  });
+
+  // Webhook secrets management (authenticated)
+  app.get("/api/webhook-secrets", requireAuth, async (req, res) => {
+    try {
+      const secrets = await storage.getWebhookSecrets(req.user!.id);
+      res.json(secrets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch webhook secrets" });
+    }
+  });
+
+  app.post("/api/webhook-secrets", requireAuth, async (req, res) => {
+    try {
+      const { source } = req.body;
+      if (!source) return res.status(400).json({ error: "Source is required" });
+      const crypto = await import("crypto");
+      const secretKey = crypto.randomBytes(24).toString("hex");
+      const secret = await storage.createWebhookSecret({ userId: req.user!.id, source, secretKey });
+      res.json(secret);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create webhook secret" });
+    }
+  });
+
+  app.delete("/api/webhook-secrets/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteWebhookSecret(req.params.id, req.user!.id);
+      if (!deleted) return res.status(404).json({ error: "Secret not found" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete webhook secret" });
+    }
+  });
+
+  // Test webhook endpoint (authenticated - sends to own webhook with key)
+  app.post("/api/webhook-test", requireAuth, async (req, res) => {
+    try {
+      const { source, payload } = req.body;
+      if (!source || !payload) return res.status(400).json({ error: "Source and payload are required" });
+
+      const secrets = await storage.getWebhookSecrets(req.user!.id);
+      let secret = secrets.find(s => s.source === source || s.source === "all");
+      if (!secret) {
+        const crypto = await import("crypto");
+        const secretKey = crypto.randomBytes(24).toString("hex");
+        secret = await storage.createWebhookSecret({ userId: req.user!.id, source, secretKey });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const testPayload = { ...payload, is_test: true };
+      const webhookUrl = `${baseUrl}/api/webhooks/${source}?key=${secret.secretKey}`;
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(testPayload),
+      });
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to send test webhook", details: error.message });
+    }
+  });
+
   // Retell Sync API - migrated from edge function
   app.post("/api/retell-sync", requireAuth, async (req, res) => {
     try {

@@ -2,10 +2,10 @@ import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, profiles, aiAgents, callLogs, knowledgeBaseEntries,
-  phoneNumbers, reviews, userSettings, googleIntegrations, contacts,
+  phoneNumbers, reviews, userSettings, googleIntegrations, contacts, webhookLogs, webhookSecrets,
   type User, type Profile, type AiAgent, type CallLog, 
   type KnowledgeBaseEntry, type PhoneNumber, type Review, 
-  type UserSettings, type GoogleIntegration, type Contact
+  type UserSettings, type GoogleIntegration, type Contact, type WebhookLog, type WebhookSecret
 } from "../shared/schema";
 
 export interface IStorage {
@@ -66,6 +66,18 @@ export interface IStorage {
   getSettings(userId: string): Promise<UserSettings | undefined>;
   createSettings(data: Partial<UserSettings> & { userId: string }): Promise<UserSettings>;
   updateSettings(userId: string, data: Partial<UserSettings>): Promise<UserSettings | undefined>;
+
+  // Webhook Logs
+  getWebhookLogs(userId: string): Promise<WebhookLog[]>;
+  getAllWebhookLogs(): Promise<WebhookLog[]>;
+  createWebhookLog(data: Partial<WebhookLog> & { source: string; eventType: string; payload: any }): Promise<WebhookLog>;
+  updateWebhookLog(id: string, data: Partial<WebhookLog>): Promise<WebhookLog | undefined>;
+
+  // Webhook Secrets
+  getWebhookSecrets(userId: string): Promise<WebhookSecret[]>;
+  getWebhookSecretByKey(secretKey: string, source: string): Promise<WebhookSecret | undefined>;
+  createWebhookSecret(data: { userId: string; source: string; secretKey: string }): Promise<WebhookSecret>;
+  deleteWebhookSecret(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -273,6 +285,44 @@ export class DatabaseStorage implements IStorage {
   async updateSettings(userId: string, data: Partial<UserSettings>): Promise<UserSettings | undefined> {
     const [settings] = await db.update(userSettings).set({ ...data, updatedAt: new Date() }).where(eq(userSettings.userId, userId)).returning();
     return settings;
+  }
+  // Webhook Logs
+  async getWebhookLogs(userId: string): Promise<WebhookLog[]> {
+    return await db.select().from(webhookLogs).where(eq(webhookLogs.userId, userId)).orderBy(desc(webhookLogs.createdAt));
+  }
+
+  async getAllWebhookLogs(): Promise<WebhookLog[]> {
+    return await db.select().from(webhookLogs).orderBy(desc(webhookLogs.createdAt));
+  }
+
+  async createWebhookLog(data: Partial<WebhookLog> & { source: string; eventType: string; payload: any }): Promise<WebhookLog> {
+    const [log] = await db.insert(webhookLogs).values(data).returning();
+    return log;
+  }
+
+  async updateWebhookLog(id: string, data: Partial<WebhookLog>): Promise<WebhookLog | undefined> {
+    const [log] = await db.update(webhookLogs).set(data).where(eq(webhookLogs.id, id)).returning();
+    return log;
+  }
+
+  // Webhook Secrets
+  async getWebhookSecrets(userId: string): Promise<WebhookSecret[]> {
+    return await db.select().from(webhookSecrets).where(and(eq(webhookSecrets.userId, userId), eq(webhookSecrets.isActive, true))).orderBy(desc(webhookSecrets.createdAt));
+  }
+
+  async getWebhookSecretByKey(secretKey: string, source: string): Promise<WebhookSecret | undefined> {
+    const [secret] = await db.select().from(webhookSecrets).where(and(eq(webhookSecrets.secretKey, secretKey), eq(webhookSecrets.source, source), eq(webhookSecrets.isActive, true))).limit(1);
+    return secret;
+  }
+
+  async createWebhookSecret(data: { userId: string; source: string; secretKey: string }): Promise<WebhookSecret> {
+    const [secret] = await db.insert(webhookSecrets).values(data).returning();
+    return secret;
+  }
+
+  async deleteWebhookSecret(id: string, userId: string): Promise<boolean> {
+    const result = await db.update(webhookSecrets).set({ isActive: false }).where(and(eq(webhookSecrets.id, id), eq(webhookSecrets.userId, userId))).returning();
+    return result.length > 0;
   }
 }
 

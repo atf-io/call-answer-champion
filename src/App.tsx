@@ -34,6 +34,7 @@ import SmsAnalytics from "./pages/agents/SmsAnalytics";
 import SmsSimulator from "./pages/agents/SmsSimulator";
 import Campaigns from "./pages/agents/Campaigns";
 import Contacts from "./pages/agents/Contacts";
+import Webhooks from "./pages/agents/Webhooks";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/dashboard/agents/sms-simulator" element={<ProtectedRoute><SmsSimulator /></ProtectedRoute>} />
             <Route path="/dashboard/agents/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
             <Route path="/dashboard/agents/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/webhooks" element={<ProtectedRoute><Webhooks /></ProtectedRoute>} />
             <Route path="/dashboard/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

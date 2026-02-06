@@ -4,6 +4,14 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **Webhook Integration for Lead Sources (Angi, Google LSA, Thumbtack)**:
+  - Added `webhook_logs` and `webhook_secrets` tables for tracking and securing webhooks
+  - Webhook endpoints: `/api/webhooks/angi`, `/api/webhooks/google-lsa`, `/api/webhooks/:source`
+  - Per-tenant authentication via secret key in query param (?key=) or X-API-KEY header
+  - Each webhook auto-creates a Contact with proper tenant attribution
+  - Webhook management API: generate/revoke keys, send test webhooks, view logs
+  - Webhooks page in dashboard (Deploy section) with Endpoints, Test, and Activity Log tabs
+  - Payload parsing matches real Angi JSON feed and Google LSA Lead Form formats
 - **Agent Creation Fix (snake_case/camelCase)**: Fixed critical naming convention mismatch:
   - Standardized frontend Agent interface to use snake_case (matching form components)
   - Added `mapAgentFromApi()` helper in useAgents.ts to convert Drizzle's camelCase API responses to snake_case

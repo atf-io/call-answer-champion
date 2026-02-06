@@ -178,6 +178,28 @@ export const contacts = pgTable("contacts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const webhookSecrets = pgTable("webhook_secrets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  source: text("source").notNull(),
+  secretKey: text("secret_key").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const webhookLogs = pgTable("webhook_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id"),
+  source: text("source").notNull(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  status: text("status").default("received"),
+  contactId: uuid("contact_id"),
+  errorMessage: text("error_message"),
+  isTest: boolean("is_test").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const sessions = pgTable("sessions", {
   sid: varchar("sid", { length: 255 }).primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -195,6 +217,8 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type KnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferSelect;
 export type PhoneNumber = typeof phoneNumbers.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type WebhookSecret = typeof webhookSecrets.$inferSelect;
 
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -216,3 +240,5 @@ export const updateSettingsSchema = insertSettingsSchema.partial().omit({ userId
 
 export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true, updatedAt: true });
 export const updateContactSchema = insertContactSchema.partial().omit({ userId: true });
+
+export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({ id: true, createdAt: true });
