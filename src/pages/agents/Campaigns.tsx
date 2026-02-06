@@ -641,14 +641,14 @@ const Campaigns = () => {
       )}
 
       <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) { clearPreset(); setNewAgentId(""); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create Campaign</DialogTitle>
             <DialogDescription>
               Start from a template or build your own from scratch.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 min-h-0 pr-1">
             <div className="space-y-2">
               <Label>Quick Start Templates</Label>
               <div className="grid grid-cols-2 gap-2">
