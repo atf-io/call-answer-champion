@@ -106,6 +106,19 @@ export const useKnowledgeBase = (agentId?: string) => {
     },
   });
 
+  const updateEntryMutation = useMutation({
+    mutationFn: async ({ entryId, data }: { entryId: string; data: { title?: string; content?: string; summary?: string } }) => {
+      return api.patch<KnowledgeBaseEntry>(`/api/knowledge-base/${entryId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
+      toast.success('Entry updated successfully');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to update entry');
+    },
+  });
+
   return {
     entries,
     isLoading,
@@ -117,5 +130,7 @@ export const useKnowledgeBase = (agentId?: string) => {
     deleteEntry: deleteMutation.mutate,
     isDeleting: deleteMutation.isPending,
     toggleActive: toggleActiveMutation.mutate,
+    updateEntry: updateEntryMutation.mutate,
+    isUpdating: updateEntryMutation.isPending,
   };
 };

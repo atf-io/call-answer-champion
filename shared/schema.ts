@@ -162,6 +162,21 @@ export const phoneNumbers = pgTable("phone_numbers", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const contacts = pgTable("contacts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  source: text("source").default("manual"),
+  status: text("status").default("new"),
+  tags: text("tags").array(),
+  notes: text("notes"),
+  lastContactedAt: timestamp("last_contacted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const sessions = pgTable("sessions", {
   sid: varchar("sid", { length: 255 }).primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -178,6 +193,7 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type KnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferSelect;
 export type PhoneNumber = typeof phoneNumbers.$inferSelect;
+export type Contact = typeof contacts.$inferSelect;
 
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -196,3 +212,6 @@ export const updateReviewSchema = insertReviewSchema.partial().omit({ userId: tr
 export const updateKnowledgeBaseSchema = insertKnowledgeBaseSchema.partial().omit({ userId: true });
 export const updatePhoneNumberSchema = insertPhoneNumberSchema.partial().omit({ userId: true });
 export const updateSettingsSchema = insertSettingsSchema.partial().omit({ userId: true });
+
+export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true, updatedAt: true });
+export const updateContactSchema = insertContactSchema.partial().omit({ userId: true });

@@ -2,10 +2,10 @@ import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, profiles, aiAgents, callLogs, knowledgeBaseEntries,
-  phoneNumbers, reviews, userSettings, googleIntegrations,
+  phoneNumbers, reviews, userSettings, googleIntegrations, contacts,
   type User, type Profile, type AiAgent, type CallLog, 
   type KnowledgeBaseEntry, type PhoneNumber, type Review, 
-  type UserSettings, type GoogleIntegration
+  type UserSettings, type GoogleIntegration, type Contact
 } from "../shared/schema";
 
 export interface IStorage {
@@ -55,6 +55,13 @@ export interface IStorage {
   updateReview(id: string, userId: number, data: Partial<Review>): Promise<Review | undefined>;
   deleteReview(id: string, userId: number): Promise<boolean>;
   
+  // Contacts
+  getContacts(userId: number): Promise<Contact[]>;
+  getContact(id: string, userId: number): Promise<Contact | undefined>;
+  createContact(data: Partial<Contact> & { userId: number; name: string }): Promise<Contact>;
+  updateContact(id: string, userId: number, data: Partial<Contact>): Promise<Contact | undefined>;
+  deleteContact(id: string, userId: number): Promise<boolean>;
+
   // User Settings
   getSettings(userId: number): Promise<UserSettings | undefined>;
   createSettings(data: Partial<UserSettings> & { userId: number }): Promise<UserSettings>;
@@ -224,6 +231,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReview(id: string, userId: number): Promise<boolean> {
     const result = await db.delete(reviews).where(and(eq(reviews.id, id), eq(reviews.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // Contacts
+  async getContacts(userId: number): Promise<Contact[]> {
+    return await db.select().from(contacts).where(eq(contacts.userId, userId)).orderBy(desc(contacts.createdAt));
+  }
+
+  async getContact(id: string, userId: number): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(and(eq(contacts.id, id), eq(contacts.userId, userId))).limit(1);
+    return contact;
+  }
+
+  async createContact(data: Partial<Contact> & { userId: number; name: string }): Promise<Contact> {
+    const [contact] = await db.insert(contacts).values(data).returning();
+    return contact;
+  }
+
+  async updateContact(id: string, userId: number, data: Partial<Contact>): Promise<Contact | undefined> {
+    const [contact] = await db.update(contacts).set({ ...data, updatedAt: new Date() }).where(and(eq(contacts.id, id), eq(contacts.userId, userId))).returning();
+    return contact;
+  }
+
+  async deleteContact(id: string, userId: number): Promise<boolean> {
+    const result = await db.delete(contacts).where(and(eq(contacts.id, id), eq(contacts.userId, userId))).returning();
     return result.length > 0;
   }
 

@@ -7,12 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, FileText, Upload, Link, Search, Loader2, Trash2, ExternalLink, Globe, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, FileText, Upload, Link, Search, Loader2, Trash2, ExternalLink, Globe, X, ChevronDown, ChevronUp, Edit, Save } from "lucide-react";
 import { useKnowledgeBase, KnowledgeBaseEntry } from "@/hooks/useKnowledgeBase";
 import { formatDistanceToNow } from "date-fns";
 
 const KnowledgeBase = () => {
-  const { entries, isLoading, scrapeUrl, isScraping, addText, isAddingText, deleteEntry, toggleActive } = useKnowledgeBase();
+  const { entries, isLoading, scrapeUrl, isScraping, addText, isAddingText, deleteEntry, toggleActive, updateEntry, isUpdating } = useKnowledgeBase();
   
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const [textDialogOpen, setTextDialogOpen] = useState(false);
@@ -160,6 +160,8 @@ const KnowledgeBase = () => {
                 onToggleExpand={() => setExpandedEntryId(expandedEntryId === entry.id ? null : entry.id)}
                 onDelete={() => deleteEntry(entry.id)}
                 onToggleActive={(active) => toggleActive({ entryId: entry.id, isActive: active })}
+                onUpdate={(data) => updateEntry({ entryId: entry.id, data })}
+                isUpdating={isUpdating}
               />
             ))}
           </div>
@@ -274,9 +276,15 @@ interface KnowledgeBaseEntryCardProps {
   onToggleExpand: () => void;
   onDelete: () => void;
   onToggleActive: (active: boolean) => void;
+  onUpdate: (data: { title?: string; content?: string }) => void;
+  isUpdating: boolean;
 }
 
-const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, onToggleActive }: KnowledgeBaseEntryCardProps) => {
+const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, onToggleActive, onUpdate, isUpdating }: KnowledgeBaseEntryCardProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(entry.title);
+  const [editContent, setEditContent] = useState(entry.content);
+
   const getSourceIcon = (type: string) => {
     switch (type) {
       case 'url': return <Globe className="w-4 h-4" />;
@@ -284,6 +292,18 @@ const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, o
       case 'text': return <FileText className="w-4 h-4" />;
       default: return <FileText className="w-4 h-4" />;
     }
+  };
+
+  const handleSave = () => {
+    if (!editTitle.trim() || !editContent.trim()) return;
+    onUpdate({ title: editTitle.trim(), content: editContent.trim() });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditTitle(entry.title);
+    setEditContent(entry.content);
+    setIsEditing(false);
   };
 
   const truncatedContent = entry.content.length > 200 
@@ -296,19 +316,28 @@ const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, o
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              {getSourceIcon(entry.source_type)}
+              {getSourceIcon(entry.sourceType)}
             </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base truncate">{entry.title}</CardTitle>
-              <CardDescription className="flex items-center gap-2 mt-1">
-                <span className="capitalize">{entry.source_type}</span>
+              {isEditing ? (
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="text-base font-semibold"
+                  data-testid={`input-edit-title-${entry.id}`}
+                />
+              ) : (
+                <CardTitle className="text-base truncate">{entry.title}</CardTitle>
+              )}
+              <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="capitalize">{entry.sourceType}</span>
                 <span>•</span>
-                <span>{formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}</span>
-                {entry.source_url && (
+                <span>{formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}</span>
+                {entry.sourceUrl && (
                   <>
                     <span>•</span>
                     <a 
-                      href={entry.source_url} 
+                      href={entry.sourceUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-primary hover:underline inline-flex items-center gap-1"
@@ -321,15 +350,32 @@ const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, o
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Switch 
-              checked={entry.is_active} 
-              onCheckedChange={onToggleActive}
-              aria-label="Toggle active"
-            />
-            <Button variant="ghost" size="icon" onClick={onDelete}>
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {isEditing ? (
+              <>
+                <Button variant="outline" size="sm" onClick={handleCancel} data-testid={`button-cancel-edit-${entry.id}`}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={isUpdating} data-testid={`button-save-edit-${entry.id}`}>
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} data-testid={`button-edit-${entry.id}`}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Switch 
+                  checked={entry.isActive} 
+                  onCheckedChange={onToggleActive}
+                  aria-label="Toggle active"
+                />
+                <Button variant="ghost" size="icon" onClick={onDelete} data-testid={`button-delete-${entry.id}`}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -340,22 +386,35 @@ const KnowledgeBaseEntryCard = ({ entry, isExpanded, onToggleExpand, onDelete, o
           </p>
         )}
         <div className="bg-muted/50 rounded-lg p-3">
-          <p className="text-sm whitespace-pre-wrap">
-            {isExpanded ? entry.content : truncatedContent}
-          </p>
-          {entry.content.length > 200 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onToggleExpand}
-              className="mt-2 h-auto p-0 text-primary"
-            >
-              {isExpanded ? (
-                <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
-              ) : (
-                <>Show more <ChevronDown className="w-4 h-4 ml-1" /></>
+          {isEditing ? (
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={8}
+              className="text-sm"
+              data-testid={`textarea-edit-content-${entry.id}`}
+            />
+          ) : (
+            <>
+              <p className="text-sm whitespace-pre-wrap">
+                {isExpanded ? entry.content : truncatedContent}
+              </p>
+              {entry.content.length > 200 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onToggleExpand}
+                  className="mt-2 h-auto p-0 text-primary"
+                  data-testid={`button-toggle-expand-${entry.id}`}
+                >
+                  {isExpanded ? (
+                    <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
+                  ) : (
+                    <>Show more <ChevronDown className="w-4 h-4 ml-1" /></>
+                  )}
+                </Button>
               )}
-            </Button>
+            </>
           )}
         </div>
       </CardContent>

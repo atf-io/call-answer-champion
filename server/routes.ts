@@ -7,7 +7,9 @@ import {
   updateKnowledgeBaseSchema,
   updateSettingsSchema,
   insertAgentSchema,
-  insertKnowledgeBaseSchema
+  insertKnowledgeBaseSchema,
+  insertContactSchema,
+  updateContactSchema
 } from "../shared/schema";
 import { z } from "zod";
 
@@ -313,6 +315,69 @@ export function registerRoutes(app: Express) {
       res.json(settings);
     } catch (error) {
       res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
+  // Contacts routes
+  app.get("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const contacts = await storage.getContacts(req.user!.id);
+      res.json(contacts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contacts" });
+    }
+  });
+
+  app.get("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const contact = await storage.getContact(req.params.id as string, req.user!.id);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch contact" });
+    }
+  });
+
+  app.post("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertContactSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid contact data", details: parsed.error.flatten() });
+      }
+      const contact = await storage.createContact({ ...parsed.data, userId: req.user!.id });
+      res.json(contact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create contact" });
+    }
+  });
+
+  app.patch("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const parsed = updateContactSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid contact data", details: parsed.error.flatten() });
+      }
+      const contact = await storage.updateContact(req.params.id as string, req.user!.id, parsed.data);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update contact" });
+    }
+  });
+
+  app.delete("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteContact(req.params.id as string, req.user!.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete contact" });
     }
   });
 
