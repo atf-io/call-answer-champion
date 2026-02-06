@@ -17,13 +17,7 @@ const Dashboard = () => {
   const { reviews, loading: reviewsLoading } = useReviews();
   const { contacts } = useContacts();
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, authLoading, navigate]);
-
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
