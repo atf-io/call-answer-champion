@@ -45,7 +45,6 @@ const navigation: NavGroup[] = [
     label: "Deploy",
     items: [
       { name: "Phone Numbers", href: "/dashboard/agents/phone-numbers", icon: Phone },
-      { name: "SMS / Text", href: "/dashboard/agents/sms", icon: MessageSquare },
       { name: "Campaigns", href: "/dashboard/agents/campaigns", icon: Megaphone },
       { name: "Webhooks", href: "/dashboard/agents/webhooks", icon: Webhook },
     ],
