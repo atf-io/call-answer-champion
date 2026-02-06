@@ -23,6 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Megaphone,
   Plus,
   Play,
@@ -33,6 +40,8 @@ import {
   MessageSquare,
   Loader2,
   ArrowLeft,
+  Copy,
+  MoreVertical,
 } from "lucide-react";
 import { useSmsCampaigns, SmsCampaign, CampaignStep } from "@/hooks/useSmsCampaigns";
 import { useSmsAgents } from "@/hooks/useSmsAgents";
@@ -136,6 +145,15 @@ const Campaigns = () => {
   const [selectedPreset, setSelectedPreset] = useState<CampaignPreset | null>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetCampaign, setDeleteTargetCampaign] = useState<SmsCampaign | null>(null);
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editAgentId, setEditAgentId] = useState("");
+  const [editTargetCampaign, setEditTargetCampaign] = useState<SmsCampaign | null>(null);
+
+  const [isCloning, setIsCloning] = useState(false);
 
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editStepDelay, setEditStepDelay] = useState(0);
@@ -222,12 +240,73 @@ const Campaigns = () => {
     setSelectedCampaign({ ...selectedCampaign, is_active: !selectedCampaign.is_active });
   };
 
+  const openDeleteDialog = (campaign: SmsCampaign) => {
+    setDeleteTargetCampaign(campaign);
+    setDeleteDialogOpen(true);
+  };
+
   const handleDelete = async () => {
-    if (!selectedCampaign) return;
-    await deleteCampaign(selectedCampaign.id);
+    const target = deleteTargetCampaign || selectedCampaign;
+    if (!target) return;
+    await deleteCampaign(target.id);
     setDeleteDialogOpen(false);
-    setSelectedCampaign(null);
-    setViewMode("list");
+    setDeleteTargetCampaign(null);
+    if (selectedCampaign?.id === target.id) {
+      setSelectedCampaign(null);
+      setViewMode("list");
+    }
+  };
+
+  const openEditDialog = (campaign: SmsCampaign) => {
+    setEditTargetCampaign(campaign);
+    setEditName(campaign.name);
+    setEditDescription(campaign.description || "");
+    setEditAgentId(campaign.sms_agent_id || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editTargetCampaign || !editName.trim()) return;
+    await updateCampaign(editTargetCampaign.id, {
+      name: editName.trim(),
+      description: editDescription.trim() || undefined,
+      sms_agent_id: editAgentId || undefined,
+    });
+    if (selectedCampaign?.id === editTargetCampaign.id) {
+      setSelectedCampaign({
+        ...selectedCampaign,
+        name: editName.trim(),
+        description: editDescription.trim() || null,
+        sms_agent_id: editAgentId || null,
+      });
+    }
+    setEditDialogOpen(false);
+    setEditTargetCampaign(null);
+  };
+
+  const handleClone = async (campaign: SmsCampaign) => {
+    setIsCloning(true);
+    try {
+      const fullCampaign = await fetchCampaignWithSteps(campaign.id);
+      const cloned = await createCampaign({
+        name: `${fullCampaign.name} (Copy)`,
+        description: fullCampaign.description || undefined,
+        sms_agent_id: fullCampaign.sms_agent_id || undefined,
+        is_active: false,
+      });
+      if (cloned?.id && fullCampaign.steps?.length) {
+        for (const step of fullCampaign.steps.sort((a, b) => a.step_order - b.step_order)) {
+          await addStep({
+            campaign_id: cloned.id,
+            step_order: step.step_order,
+            delay_minutes: step.delay_minutes,
+            message_template: step.message_template,
+          });
+        }
+      }
+    } catch {} finally {
+      setIsCloning(false);
+    }
   };
 
   const handleAddStep = async () => {
@@ -320,12 +399,45 @@ const Campaigns = () => {
                   data-testid={`card-campaign-${campaign.id}`}
                 >
                   <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <CardTitle className="text-base truncate" data-testid={`text-campaign-name-${campaign.id}`}>
                         {campaign.name}
                       </CardTitle>
                     </div>
-                    {statusBadge(campaign)}
+                    <div className="flex items-center gap-1.5">
+                      {statusBadge(campaign)}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`button-campaign-menu-${campaign.id}`}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => openEditDialog(campaign)} data-testid={`menu-edit-${campaign.id}`}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleClone(campaign)} disabled={isCloning} data-testid={`menu-clone-${campaign.id}`}>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Clone
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => openDeleteDialog(campaign)}
+                            data-testid={`menu-delete-${campaign.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {campaign.description && (
@@ -380,7 +492,24 @@ const Campaigns = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => setDeleteDialogOpen(true)}
+                    onClick={() => openEditDialog(selectedCampaign)}
+                    data-testid="button-edit-campaign-detail"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleClone(selectedCampaign)}
+                    disabled={isCloning}
+                    data-testid="button-clone-campaign-detail"
+                  >
+                    {isCloning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => openDeleteDialog(selectedCampaign)}
                     data-testid="button-delete-campaign"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -674,12 +803,74 @@ const Campaigns = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Campaign</DialogTitle>
+            <DialogDescription>
+              Update the campaign details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-campaign-name">Campaign Name *</Label>
+              <Input
+                id="edit-campaign-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Campaign name"
+                data-testid="input-edit-campaign-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-campaign-description">Description</Label>
+              <Textarea
+                id="edit-campaign-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Describe the purpose of this campaign..."
+                rows={2}
+                data-testid="textarea-edit-campaign-description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SMS Agent</Label>
+              <Select value={editAgentId} onValueChange={setEditAgentId}>
+                <SelectTrigger data-testid="select-edit-sms-agent">
+                  <SelectValue placeholder="Select an SMS agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} data-testid="button-cancel-edit">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={isUpdating || !editName.trim()}
+              data-testid="button-confirm-edit-campaign"
+            >
+              {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteTargetCampaign(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Campaign</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedCampaign?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{(deleteTargetCampaign || selectedCampaign)?.name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
