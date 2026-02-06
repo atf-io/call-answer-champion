@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2, History } from "lucide-react";
+import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2, History, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
@@ -166,6 +166,15 @@ const AgentsList = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {agents.map((agent) => {
                 const isLive = isAgentLive(agent.retell_agent_id);
+                const isChatAgent = agent.voice_type === "Chat Agent" || agent.voice_model === "chat" || agent.voice_id === "chat-agent";
+                const isSmsAgent = agent.voice_type === "Speed to Lead" || agent.voice_id === "sms-agent" || agent.voice_model === "sms";
+                const AgentIcon = isChatAgent ? MessageSquare : Bot;
+                const gradientColor = isChatAgent 
+                  ? "from-blue-500 to-cyan-500" 
+                  : isSmsAgent 
+                    ? "from-orange-500 to-amber-500" 
+                    : "from-primary to-primary/80";
+                const agentTypeLabel = isChatAgent ? "Chat Agent" : isSmsAgent ? "SMS Agent" : "Voice AI";
                 return (
                   <Card key={agent.id} className={`relative overflow-hidden ${isLive ? "ring-2 ring-green-500" : ""}`}>
                     {isLive && (
@@ -178,8 +187,13 @@ const AgentsList = () => {
                     )}
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                          <Bot className="w-6 h-6 text-white" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradientColor} flex items-center justify-center`}>
+                            <AgentIcon className="w-6 h-6 text-white" />
+                          </div>
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-agent-type-${agent.id}`}>
+                            {agentTypeLabel}
+                          </Badge>
                         </div>
                         <Switch
                           checked={agent.is_active}

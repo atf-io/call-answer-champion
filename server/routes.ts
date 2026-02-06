@@ -1555,8 +1555,33 @@ async function updateRetellLlm(apiKey: string, llmId: string, config: any) {
   return await response.json();
 }
 
+async function listRetellChatAgents(apiKey: string) {
+  const response = await fetch(`${RETELL_BASE_URL}/list-chat-agents`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${apiKey}` },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return { chatAgents: [] };
+    }
+    throw new Error(`Failed to fetch chat agents: ${response.status}`);
+  }
+
+  const chatAgents = await response.json();
+  return { chatAgents };
+}
+
 async function syncAgentsFromRetell(apiKey: string, userId: any) {
   const { agents: retellAgents } = await listRetellAgents(apiKey);
+  
+  let chatAgents: any[] = [];
+  try {
+    const chatResult = await listRetellChatAgents(apiKey);
+    chatAgents = chatResult.chatAgents || [];
+  } catch (e) {
+    console.log("Chat agents not available or not supported:", e);
+  }
   
   let created = 0;
   let updated = 0;
@@ -1568,6 +1593,7 @@ async function syncAgentsFromRetell(apiKey: string, userId: any) {
     const agentData: any = {
       name: retellAgent.agent_name || "Unnamed Agent",
       retellAgentId: retellAgent.agent_id,
+      voiceType: "Voice AI",
       voiceId: retellAgent.voice_id || null,
       voiceModel: retellAgent.voice_model || "eleven_turbo_v2",
       voiceTemperature: retellAgent.voice_temperature?.toString() || "1",
@@ -1602,12 +1628,45 @@ async function syncAgentsFromRetell(apiKey: string, userId: any) {
     }
   }
 
+  for (const chatAgent of chatAgents) {
+    const chatAgentId = chatAgent.agent_id || chatAgent.chat_agent_id;
+    if (!chatAgentId) continue;
+    
+    const existingAgent = await storage.getAgentByRetellId(chatAgentId, String(userId));
+
+    const agentData: any = {
+      name: chatAgent.agent_name || "Unnamed Chat Agent",
+      retellAgentId: chatAgentId,
+      voiceType: "Chat Agent",
+      voiceId: "chat-agent",
+      voiceModel: "chat",
+      language: chatAgent.language || "en-US",
+    };
+
+    if (chatAgent.response_engine?.llm_id) {
+      agentData.retellLlmId = chatAgent.response_engine.llm_id;
+    }
+
+    if (existingAgent) {
+      await storage.updateAgent(existingAgent.id, String(userId), agentData);
+      updated++;
+    } else {
+      await storage.createAgent({
+        userId: String(userId),
+        ...agentData,
+      });
+      created++;
+    }
+  }
+
+  const totalVoice = retellAgents.length;
+  const totalChat = chatAgents.length;
   return { 
-    message: `Sync complete: ${created} new agents imported, ${updated} existing agents updated`,
+    message: `Sync complete: ${created} new agents imported, ${updated} existing agents updated (${totalVoice} voice, ${totalChat} chat)`,
     created,
     updated,
     skipped,
-    total: retellAgents.length
+    total: totalVoice + totalChat
   };
 }
 
