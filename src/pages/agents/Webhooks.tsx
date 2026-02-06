@@ -112,10 +112,12 @@ const Webhooks = () => {
 
   const { data: webhookLogs = [], isLoading: logsLoading } = useQuery<WebhookLogEntry[]>({
     queryKey: ["/api/webhook-logs"],
+    queryFn: () => api.get<WebhookLogEntry[]>("/api/webhook-logs"),
   });
 
   const { data: webhookSecrets = [], isLoading: secretsLoading } = useQuery<WebhookSecretEntry[]>({
     queryKey: ["/api/webhook-secrets"],
+    queryFn: () => api.get<WebhookSecretEntry[]>("/api/webhook-secrets"),
   });
 
   const createSecretMutation = useMutation({

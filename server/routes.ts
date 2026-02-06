@@ -627,7 +627,7 @@ export function registerRoutes(app: Express) {
   // Webhook logs (authenticated)
   app.get("/api/webhook-logs", requireAuth, async (req, res) => {
     try {
-      const logs = await storage.getWebhookLogs(req.user!.id);
+      const logs = await storage.getWebhookLogs(String(req.user!.id));
       res.json(logs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch webhook logs" });
@@ -637,7 +637,7 @@ export function registerRoutes(app: Express) {
   // Webhook secrets management (authenticated)
   app.get("/api/webhook-secrets", requireAuth, async (req, res) => {
     try {
-      const secrets = await storage.getWebhookSecrets(req.user!.id);
+      const secrets = await storage.getWebhookSecrets(String(req.user!.id));
       res.json(secrets);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch webhook secrets" });
@@ -650,7 +650,7 @@ export function registerRoutes(app: Express) {
       if (!source) return res.status(400).json({ error: "Source is required" });
       const crypto = await import("crypto");
       const secretKey = crypto.randomBytes(24).toString("hex");
-      const secret = await storage.createWebhookSecret({ userId: req.user!.id, source, secretKey });
+      const secret = await storage.createWebhookSecret({ userId: String(req.user!.id), source, secretKey });
       res.json(secret);
     } catch (error) {
       res.status(500).json({ error: "Failed to create webhook secret" });
@@ -659,7 +659,7 @@ export function registerRoutes(app: Express) {
 
   app.delete("/api/webhook-secrets/:id", requireAuth, async (req, res) => {
     try {
-      const deleted = await storage.deleteWebhookSecret(req.params.id, req.user!.id);
+      const deleted = await storage.deleteWebhookSecret(req.params.id, String(req.user!.id));
       if (!deleted) return res.status(404).json({ error: "Secret not found" });
       res.json({ success: true });
     } catch (error) {
@@ -673,12 +673,13 @@ export function registerRoutes(app: Express) {
       const { source, payload } = req.body;
       if (!source || !payload) return res.status(400).json({ error: "Source and payload are required" });
 
-      const secrets = await storage.getWebhookSecrets(req.user!.id);
+      const userId = String(req.user!.id);
+      const secrets = await storage.getWebhookSecrets(userId);
       let secret = secrets.find(s => s.source === source || s.source === "all");
       if (!secret) {
         const crypto = await import("crypto");
         const secretKey = crypto.randomBytes(24).toString("hex");
-        secret = await storage.createWebhookSecret({ userId: req.user!.id, source, secretKey });
+        secret = await storage.createWebhookSecret({ userId, source, secretKey });
       }
 
       const baseUrl = `${req.protocol}://${req.get("host")}`;
