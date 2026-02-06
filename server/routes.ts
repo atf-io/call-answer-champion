@@ -1022,40 +1022,53 @@ async function updateRetellLlm(apiKey: string, llmId: string, config: any) {
 async function createRetellAgent(apiKey: string, userId: number, agentConfig: any) {
   const normalized = normalizeAgentConfig(agentConfig);
 
-  const retellLlm = await createRetellLlm(apiKey, normalized);
+  const isSmsAgent = normalized.voiceId === "sms-agent" || normalized.voice_id === "sms-agent" ||
+    normalized.voiceModel === "sms" || normalized.voice_model === "sms" ||
+    normalized.voiceType === "Speed to Lead" || normalized.voice_type === "Speed to Lead" ||
+    normalized.voiceType === "text-agent" || normalized.voice_type === "text-agent";
 
-  const retellConfig = buildRetellAgentConfig(normalized);
-  retellConfig.agent_name = normalized.name;
-  retellConfig.response_engine = {
-    type: "retell-llm",
-    llm_id: retellLlm.llm_id,
-  };
+  let retellAgentId = null;
+  let retellLlmId = null;
+  let retellAgent = null;
 
-  if (!retellConfig.voice_id) {
-    retellConfig.voice_id = normalized.voiceId || normalized.voice_id || normalized.voiceType || normalized.voice_type || "11labs-Emma";
+  if (!isSmsAgent) {
+    const retellLlm = await createRetellLlm(apiKey, normalized);
+    retellLlmId = retellLlm.llm_id;
+
+    const retellConfig = buildRetellAgentConfig(normalized);
+    retellConfig.agent_name = normalized.name;
+    retellConfig.response_engine = {
+      type: "retell-llm",
+      llm_id: retellLlm.llm_id,
+    };
+
+    if (!retellConfig.voice_id) {
+      retellConfig.voice_id = normalized.voiceId || normalized.voice_id || normalized.voiceType || normalized.voice_type || "11labs-Emma";
+    }
+
+    const response = await fetch(`${RETELL_BASE_URL}/create-agent`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(retellConfig),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create Retell agent: ${errorText}`);
+    }
+
+    retellAgent = await response.json();
+    retellAgentId = retellAgent.agent_id;
   }
-
-  const response = await fetch(`${RETELL_BASE_URL}/create-agent`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(retellConfig),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to create Retell agent: ${errorText}`);
-  }
-
-  const retellAgent = await response.json();
 
   const dbAgent = await storage.createAgent({
     userId,
     name: normalized.name,
-    retellAgentId: retellAgent.agent_id,
-    retellLlmId: retellLlm.llm_id,
+    retellAgentId,
+    retellLlmId,
     voiceType: normalized.voiceType,
     personality: normalized.personality,
     greetingMessage: normalized.greetingMessage,
