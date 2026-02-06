@@ -37,8 +37,52 @@ import {
 import { useSmsCampaigns, SmsCampaign, CampaignStep } from "@/hooks/useSmsCampaigns";
 import { useSmsAgents } from "@/hooks/useSmsAgents";
 import { formatDistanceToNow } from "date-fns";
+import VariableInserter from "@/components/campaigns/VariableInserter";
 
 type ViewMode = "list" | "detail";
+
+interface CampaignPreset {
+  name: string;
+  description: string;
+  steps: { delay_minutes: number; message_template: string }[];
+}
+
+const campaignPresets: CampaignPreset[] = [
+  {
+    name: "Speed to Lead",
+    description: "Reach new leads within minutes of receiving their inquiry.",
+    steps: [
+      { delay_minutes: 1, message_template: "Hi {{first_name}}, thanks for reaching out about {{service_category}}! This is {{agent_name}} from {{business_name}}. How can we help you today?" },
+      { delay_minutes: 30, message_template: "Hi {{first_name}}, just following up on your inquiry about {{service_category}}. We'd love to help - would you like to schedule a quick call?" },
+      { delay_minutes: 1440, message_template: "Hey {{first_name}}, we wanted to check in one more time. If you're still looking for help with {{service_category}}, reply here or give us a call. We're happy to assist!" },
+    ],
+  },
+  {
+    name: "Appointment Reminder",
+    description: "Automated reminders before a scheduled appointment.",
+    steps: [
+      { delay_minutes: 1440, message_template: "Hi {{first_name}}, this is {{business_name}} reminding you about your upcoming {{service_category}} appointment tomorrow. Reply YES to confirm or call us to reschedule." },
+      { delay_minutes: 2880, message_template: "{{first_name}}, your appointment with {{business_name}} is coming up soon. We look forward to seeing you!" },
+    ],
+  },
+  {
+    name: "Follow-Up After Service",
+    description: "Check in with customers after completing a service.",
+    steps: [
+      { delay_minutes: 60, message_template: "Hi {{first_name}}, thanks for choosing {{business_name}} for your {{service_category}} needs! We hope everything went well." },
+      { delay_minutes: 4320, message_template: "Hey {{first_name}}, it's been a few days since your {{service_category}} service. How is everything? We'd love your feedback!" },
+      { delay_minutes: 10080, message_template: "Hi {{first_name}}, if you were happy with our {{service_category}} work, we'd really appreciate a quick review. It helps small businesses like ours a lot! Thank you - {{business_name}}" },
+    ],
+  },
+  {
+    name: "Re-Engagement",
+    description: "Win back leads that went cold or didn't convert.",
+    steps: [
+      { delay_minutes: 0, message_template: "Hi {{first_name}}, it's {{agent_name}} from {{business_name}}. We noticed you were interested in {{service_category}} a while back. Are you still looking for help?" },
+      { delay_minutes: 4320, message_template: "{{first_name}}, just a friendly check-in from {{business_name}}. We have availability for {{service_category}} this week if you're interested!" },
+    ],
+  },
+];
 
 const statusBadge = (campaign: SmsCampaign) => {
   if (campaign.is_active) {
@@ -89,6 +133,7 @@ const Campaigns = () => {
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newAgentId, setNewAgentId] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<CampaignPreset | null>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -121,17 +166,54 @@ const Campaigns = () => {
     } catch {}
   };
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    await createCampaign({
-      name: newName.trim(),
-      description: newDescription.trim() || undefined,
-      sms_agent_id: newAgentId || undefined,
-    });
+  const applyPreset = (preset: CampaignPreset) => {
+    setSelectedPreset(preset);
+    setNewName(preset.name);
+    setNewDescription(preset.description);
+  };
+
+  const clearPreset = () => {
+    setSelectedPreset(null);
     setNewName("");
     setNewDescription("");
-    setNewAgentId("");
-    setCreateDialogOpen(false);
+  };
+
+  const [isCreatingPresetSteps, setIsCreatingPresetSteps] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    try {
+      const campaign = await createCampaign({
+        name: newName.trim(),
+        description: newDescription.trim() || undefined,
+        sms_agent_id: newAgentId || undefined,
+      });
+      if (selectedPreset && campaign?.id) {
+        setIsCreatingPresetSteps(true);
+        try {
+          for (let i = 0; i < selectedPreset.steps.length; i++) {
+            const s = selectedPreset.steps[i];
+            await addStep({
+              campaign_id: campaign.id,
+              step_order: i + 1,
+              delay_minutes: s.delay_minutes,
+              message_template: s.message_template,
+            });
+          }
+        } catch {
+        } finally {
+          setIsCreatingPresetSteps(false);
+        }
+      }
+      setNewName("");
+      setNewDescription("");
+      setNewAgentId("");
+      setSelectedPreset(null);
+      setCreateDialogOpen(false);
+      if (campaign?.id) {
+        openCampaignDetail(campaign);
+      }
+    } catch {}
   };
 
   const handleToggleActive = async () => {
@@ -358,7 +440,13 @@ const Campaigns = () => {
                                   />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label>Message Template</Label>
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <Label>Message Template</Label>
+                                    <VariableInserter onInsert={(v) => setEditStepMessage((prev) => {
+                                      if (prev.length === 0 || prev.endsWith(" ") || prev.endsWith("\n")) return prev + v;
+                                      return prev + " " + v;
+                                    })} />
+                                  </div>
                                   <Textarea
                                     value={editStepMessage}
                                     onChange={(e) => setEditStepMessage(e.target.value)}
@@ -423,15 +511,41 @@ const Campaigns = () => {
         </div>
       )}
 
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+      <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) { clearPreset(); setNewAgentId(""); } }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Campaign</DialogTitle>
             <DialogDescription>
-              Set up a new SMS campaign to engage with your contacts.
+              Start from a template or build your own from scratch.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Quick Start Templates</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {campaignPresets.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() => applyPreset(preset)}
+                    className={`text-left p-3 rounded-md border text-sm transition-colors hover-elevate ${
+                      selectedPreset?.name === preset.name
+                        ? "border-primary bg-primary/5"
+                        : ""
+                    }`}
+                    data-testid={`button-preset-${preset.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <span className="font-medium block mb-0.5">{preset.name}</span>
+                    <span className="text-xs text-muted-foreground line-clamp-2">{preset.description}</span>
+                    <span className="text-xs text-muted-foreground mt-1 block">{preset.steps.length} steps</span>
+                  </button>
+                ))}
+              </div>
+              {selectedPreset && (
+                <Button variant="ghost" size="sm" onClick={clearPreset} data-testid="button-clear-preset">
+                  Clear template
+                </Button>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="campaign-name">Campaign Name *</Label>
               <Input
@@ -449,7 +563,7 @@ const Campaigns = () => {
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Describe the purpose of this campaign..."
-                rows={3}
+                rows={2}
                 data-testid="textarea-campaign-description"
               />
             </div>
@@ -468,6 +582,20 @@ const Campaigns = () => {
                 </SelectContent>
               </Select>
             </div>
+            {selectedPreset && (
+              <div className="space-y-2">
+                <Label>Pre-loaded Steps Preview</Label>
+                <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                  {selectedPreset.steps.map((s, i) => (
+                    <div key={i} className="text-xs space-y-0.5">
+                      <span className="font-medium text-muted-foreground">Step {i + 1} ({s.delay_minutes} min delay)</span>
+                      <p className="text-foreground whitespace-pre-wrap">{s.message_template}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">You can edit these steps after creating the campaign.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)} data-testid="button-cancel-create">
@@ -475,15 +603,15 @@ const Campaigns = () => {
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={isCreating || !newName.trim()}
+              disabled={isCreating || isCreatingPresetSteps || !newName.trim()}
               data-testid="button-confirm-create-campaign"
             >
-              {isCreating ? (
+              {(isCreating || isCreatingPresetSteps) ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Plus className="w-4 h-4 mr-2" />
               )}
-              Create Campaign
+              {isCreatingPresetSteps ? "Setting up steps..." : "Create Campaign"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -513,7 +641,13 @@ const Campaigns = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="step-message">Message Template</Label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label htmlFor="step-message">Message Template</Label>
+                <VariableInserter onInsert={(v) => setNewStepMessage((prev) => {
+                  if (prev.length === 0 || prev.endsWith(" ") || prev.endsWith("\n")) return prev + v;
+                  return prev + " " + v;
+                })} />
+              </div>
               <Textarea
                 id="step-message"
                 value={newStepMessage}
