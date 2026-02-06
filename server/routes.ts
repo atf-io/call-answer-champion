@@ -1164,56 +1164,273 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/sms-agents", requireAuth, async (_req, res) => {
-    res.json([]);
+  app.get("/api/sms-agents", requireAuth, async (req, res) => {
+    try {
+      const userId = String(req.user!.id);
+      const allAgents = await storage.getAgents(userId);
+      const smsAgents = allAgents.filter(a =>
+        a.voiceId === "sms-agent" || a.voiceModel === "sms" || a.voiceType === "Speed to Lead"
+      );
+      const mapped = smsAgents.map(a => ({
+        id: a.id,
+        user_id: a.userId,
+        name: a.name,
+        system_prompt: a.personality || "",
+        greeting_message: a.greetingMessage || "",
+        phone_number: null,
+        is_active: a.isActive ?? false,
+        max_tokens: 1024,
+        temperature: Number(a.voiceTemperature) || 1,
+        model: a.voiceModel || "sms",
+        created_at: a.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: a.updatedAt?.toISOString() || new Date().toISOString(),
+      }));
+      res.json(mapped);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/sms-agents/:id", requireAuth, async (req, res) => {
-    res.status(404).json({ error: "SMS agent not found" });
+    try {
+      const userId = String(req.user!.id);
+      const agent = await storage.getAgent(req.params.id, userId);
+      if (!agent) return res.status(404).json({ error: "SMS agent not found" });
+      const isSms = agent.voiceId === "sms-agent" || agent.voiceModel === "sms" || agent.voiceType === "Speed to Lead";
+      if (!isSms) return res.status(404).json({ error: "SMS agent not found" });
+      res.json({
+        id: agent.id,
+        user_id: agent.userId,
+        name: agent.name,
+        system_prompt: agent.personality || "",
+        greeting_message: agent.greetingMessage || "",
+        phone_number: null,
+        is_active: agent.isActive ?? false,
+        max_tokens: 1024,
+        temperature: Number(agent.voiceTemperature) || 1,
+        model: agent.voiceModel || "sms",
+        created_at: agent.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: agent.updatedAt?.toISOString() || new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  app.post("/api/sms-agents", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS agents feature coming soon" });
-  });
-
-  app.patch("/api/sms-agents/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS agents feature coming soon" });
-  });
-
-  app.delete("/api/sms-agents/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS agents feature coming soon" });
-  });
-
-  app.get("/api/sms-campaigns", requireAuth, async (_req, res) => {
-    res.json([]);
+  app.get("/api/sms-campaigns", requireAuth, async (req, res) => {
+    try {
+      const userId = String(req.user!.id);
+      const campaigns = await storage.getSmsCampaigns(userId);
+      const result = await Promise.all(campaigns.map(async (c) => {
+        const steps = await storage.getSmsCampaignSteps(c.id);
+        return {
+          id: c.id,
+          user_id: c.userId,
+          name: c.name,
+          description: c.description,
+          sms_agent_id: c.smsAgentId,
+          is_active: c.isActive ?? false,
+          created_at: c.createdAt?.toISOString() || new Date().toISOString(),
+          updated_at: c.updatedAt?.toISOString() || new Date().toISOString(),
+          steps: steps.map(s => ({
+            id: s.id,
+            campaign_id: s.campaignId,
+            step_order: s.stepOrder,
+            delay_minutes: s.delayMinutes ?? 0,
+            message_template: s.messageTemplate,
+            created_at: s.createdAt?.toISOString() || new Date().toISOString(),
+          })),
+        };
+      }));
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.get("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
-    res.status(404).json({ error: "Campaign not found" });
+    try {
+      const userId = String(req.user!.id);
+      const campaign = await storage.getSmsCampaign(req.params.id, userId);
+      if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+      const steps = await storage.getSmsCampaignSteps(campaign.id);
+      res.json({
+        id: campaign.id,
+        user_id: campaign.userId,
+        name: campaign.name,
+        description: campaign.description,
+        sms_agent_id: campaign.smsAgentId,
+        is_active: campaign.isActive ?? false,
+        created_at: campaign.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: campaign.updatedAt?.toISOString() || new Date().toISOString(),
+        steps: steps.map(s => ({
+          id: s.id,
+          campaign_id: s.campaignId,
+          step_order: s.stepOrder,
+          delay_minutes: s.delayMinutes ?? 0,
+          message_template: s.messageTemplate,
+          created_at: s.createdAt?.toISOString() || new Date().toISOString(),
+        })),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/sms-campaigns", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const { name, description, sms_agent_id, is_active } = req.body;
+      if (!name?.trim()) return res.status(400).json({ error: "Campaign name is required" });
+      if (sms_agent_id) {
+        const agent = await storage.getAgent(sms_agent_id, userId);
+        if (!agent) return res.status(400).json({ error: "SMS agent not found" });
+        const isSms = agent.voiceId === "sms-agent" || agent.voiceModel === "sms" || agent.voiceType === "Speed to Lead";
+        if (!isSms) return res.status(400).json({ error: "Selected agent is not an SMS agent" });
+      }
+      const campaign = await storage.createSmsCampaign({
+        userId,
+        name: name.trim(),
+        description: description || null,
+        smsAgentId: sms_agent_id || null,
+        isActive: is_active ?? false,
+      });
+      res.json({
+        id: campaign.id,
+        user_id: campaign.userId,
+        name: campaign.name,
+        description: campaign.description,
+        sms_agent_id: campaign.smsAgentId,
+        is_active: campaign.isActive ?? false,
+        created_at: campaign.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: campaign.updatedAt?.toISOString() || new Date().toISOString(),
+        steps: [],
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.patch("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const updates: any = {};
+      if (req.body.name !== undefined) updates.name = req.body.name;
+      if (req.body.description !== undefined) updates.description = req.body.description;
+      if (req.body.sms_agent_id !== undefined) {
+        if (req.body.sms_agent_id) {
+          const agent = await storage.getAgent(req.body.sms_agent_id, userId);
+          if (!agent) return res.status(400).json({ error: "SMS agent not found" });
+          const isSms = agent.voiceId === "sms-agent" || agent.voiceModel === "sms" || agent.voiceType === "Speed to Lead";
+          if (!isSms) return res.status(400).json({ error: "Selected agent is not an SMS agent" });
+        }
+        updates.smsAgentId = req.body.sms_agent_id || null;
+      }
+      if (req.body.is_active !== undefined) updates.isActive = req.body.is_active;
+      const campaign = await storage.updateSmsCampaign(req.params.id, userId, updates);
+      if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+      const steps = await storage.getSmsCampaignSteps(campaign.id);
+      res.json({
+        id: campaign.id,
+        user_id: campaign.userId,
+        name: campaign.name,
+        description: campaign.description,
+        sms_agent_id: campaign.smsAgentId,
+        is_active: campaign.isActive ?? false,
+        created_at: campaign.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: campaign.updatedAt?.toISOString() || new Date().toISOString(),
+        steps: steps.map(s => ({
+          id: s.id,
+          campaign_id: s.campaignId,
+          step_order: s.stepOrder,
+          delay_minutes: s.delayMinutes ?? 0,
+          message_template: s.messageTemplate,
+          created_at: s.createdAt?.toISOString() || new Date().toISOString(),
+        })),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const deleted = await storage.deleteSmsCampaign(req.params.id, userId);
+      if (!deleted) return res.status(404).json({ error: "Campaign not found" });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/sms-campaign-steps", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const { campaign_id, step_order, delay_minutes, message_template } = req.body;
+      if (!campaign_id || !message_template?.trim()) {
+        return res.status(400).json({ error: "campaign_id and message_template are required" });
+      }
+      const campaign = await storage.getSmsCampaign(campaign_id, userId);
+      if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+      const step = await storage.createSmsCampaignStep({
+        campaignId: campaign_id,
+        stepOrder: step_order ?? 1,
+        delayMinutes: delay_minutes ?? 0,
+        messageTemplate: message_template.trim(),
+      });
+      res.json({
+        id: step.id,
+        campaign_id: step.campaignId,
+        step_order: step.stepOrder,
+        delay_minutes: step.delayMinutes ?? 0,
+        message_template: step.messageTemplate,
+        created_at: step.createdAt?.toISOString() || new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.patch("/api/sms-campaign-steps/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const existing = await storage.getSmsCampaignStep(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Step not found" });
+      const campaign = await storage.getSmsCampaign(existing.campaignId, userId);
+      if (!campaign) return res.status(404).json({ error: "Step not found" });
+      const updates: any = {};
+      if (req.body.delay_minutes !== undefined) updates.delayMinutes = req.body.delay_minutes;
+      if (req.body.message_template !== undefined) updates.messageTemplate = req.body.message_template;
+      if (req.body.step_order !== undefined) updates.stepOrder = req.body.step_order;
+      const step = await storage.updateSmsCampaignStep(req.params.id, updates);
+      if (!step) return res.status(404).json({ error: "Step not found" });
+      res.json({
+        id: step.id,
+        campaign_id: step.campaignId,
+        step_order: step.stepOrder,
+        delay_minutes: step.delayMinutes ?? 0,
+        message_template: step.messageTemplate,
+        created_at: step.createdAt?.toISOString() || new Date().toISOString(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/sms-campaign-steps/:id", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+    try {
+      const userId = String(req.user!.id);
+      const existing = await storage.getSmsCampaignStep(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Step not found" });
+      const campaign = await storage.getSmsCampaign(existing.campaignId, userId);
+      if (!campaign) return res.status(404).json({ error: "Step not found" });
+      const deleted = await storage.deleteSmsCampaignStep(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Step not found" });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 }
 

@@ -201,6 +201,26 @@ export const webhookLogs = pgTable("webhook_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const smsCampaigns = pgTable("sms_campaigns", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  smsAgentId: uuid("sms_agent_id").references(() => aiAgents.id, { onDelete: "set null" }),
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const smsCampaignSteps = pgTable("sms_campaign_steps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => smsCampaigns.id, { onDelete: "cascade" }),
+  stepOrder: integer("step_order").notNull(),
+  delayMinutes: integer("delay_minutes").default(0),
+  messageTemplate: text("message_template").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const sessions = pgTable("sessions", {
   sid: varchar("sid", { length: 255 }).primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -220,6 +240,8 @@ export type PhoneNumber = typeof phoneNumbers.$inferSelect;
 export type Contact = typeof contacts.$inferSelect;
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type WebhookSecret = typeof webhookSecrets.$inferSelect;
+export type SmsCampaign = typeof smsCampaigns.$inferSelect;
+export type SmsCampaignStep = typeof smsCampaignSteps.$inferSelect;
 
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -243,3 +265,7 @@ export const insertContactSchema = createInsertSchema(contacts).omit({ id: true,
 export const updateContactSchema = insertContactSchema.partial().omit({ userId: true });
 
 export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({ id: true, createdAt: true });
+
+export const insertSmsCampaignSchema = createInsertSchema(smsCampaigns).omit({ id: true, createdAt: true, updatedAt: true });
+export const updateSmsCampaignSchema = insertSmsCampaignSchema.partial().omit({ userId: true });
+export const insertSmsCampaignStepSchema = createInsertSchema(smsCampaignSteps).omit({ id: true, createdAt: true });

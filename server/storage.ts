@@ -3,9 +3,11 @@ import { db } from "./db";
 import {
   users, profiles, aiAgents, callLogs, knowledgeBaseEntries,
   phoneNumbers, reviews, userSettings, googleIntegrations, contacts, webhookLogs, webhookSecrets,
+  smsCampaigns, smsCampaignSteps,
   type User, type Profile, type AiAgent, type CallLog, 
   type KnowledgeBaseEntry, type PhoneNumber, type Review, 
-  type UserSettings, type GoogleIntegration, type Contact, type WebhookLog, type WebhookSecret
+  type UserSettings, type GoogleIntegration, type Contact, type WebhookLog, type WebhookSecret,
+  type SmsCampaign, type SmsCampaignStep
 } from "../shared/schema";
 
 export interface IStorage {
@@ -78,6 +80,20 @@ export interface IStorage {
   getWebhookSecretByKey(secretKey: string, source: string): Promise<WebhookSecret | undefined>;
   createWebhookSecret(data: { userId: string; source: string; secretKey: string }): Promise<WebhookSecret>;
   deleteWebhookSecret(id: string, userId: string): Promise<boolean>;
+
+  // SMS Campaigns
+  getSmsCampaigns(userId: string): Promise<SmsCampaign[]>;
+  getSmsCampaign(id: string, userId: string): Promise<SmsCampaign | undefined>;
+  createSmsCampaign(data: Partial<SmsCampaign> & { userId: string; name: string }): Promise<SmsCampaign>;
+  updateSmsCampaign(id: string, userId: string, data: Partial<SmsCampaign>): Promise<SmsCampaign | undefined>;
+  deleteSmsCampaign(id: string, userId: string): Promise<boolean>;
+
+  // SMS Campaign Steps
+  getSmsCampaignSteps(campaignId: string): Promise<SmsCampaignStep[]>;
+  getSmsCampaignStep(id: string): Promise<SmsCampaignStep | undefined>;
+  createSmsCampaignStep(data: Partial<SmsCampaignStep> & { campaignId: string; stepOrder: number; messageTemplate: string }): Promise<SmsCampaignStep>;
+  updateSmsCampaignStep(id: string, data: Partial<SmsCampaignStep>): Promise<SmsCampaignStep | undefined>;
+  deleteSmsCampaignStep(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -322,6 +338,56 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWebhookSecret(id: string, userId: string): Promise<boolean> {
     const result = await db.update(webhookSecrets).set({ isActive: false }).where(and(eq(webhookSecrets.id, id), eq(webhookSecrets.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // SMS Campaigns
+  async getSmsCampaigns(userId: string): Promise<SmsCampaign[]> {
+    return await db.select().from(smsCampaigns).where(eq(smsCampaigns.userId, userId)).orderBy(desc(smsCampaigns.createdAt));
+  }
+
+  async getSmsCampaign(id: string, userId: string): Promise<SmsCampaign | undefined> {
+    const [campaign] = await db.select().from(smsCampaigns).where(and(eq(smsCampaigns.id, id), eq(smsCampaigns.userId, userId))).limit(1);
+    return campaign;
+  }
+
+  async createSmsCampaign(data: Partial<SmsCampaign> & { userId: string; name: string }): Promise<SmsCampaign> {
+    const [campaign] = await db.insert(smsCampaigns).values(data).returning();
+    return campaign;
+  }
+
+  async updateSmsCampaign(id: string, userId: string, data: Partial<SmsCampaign>): Promise<SmsCampaign | undefined> {
+    const [campaign] = await db.update(smsCampaigns).set({ ...data, updatedAt: new Date() }).where(and(eq(smsCampaigns.id, id), eq(smsCampaigns.userId, userId))).returning();
+    return campaign;
+  }
+
+  async deleteSmsCampaign(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(smsCampaigns).where(and(eq(smsCampaigns.id, id), eq(smsCampaigns.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  // SMS Campaign Steps
+  async getSmsCampaignSteps(campaignId: string): Promise<SmsCampaignStep[]> {
+    return await db.select().from(smsCampaignSteps).where(eq(smsCampaignSteps.campaignId, campaignId)).orderBy(smsCampaignSteps.stepOrder);
+  }
+
+  async getSmsCampaignStep(id: string): Promise<SmsCampaignStep | undefined> {
+    const [step] = await db.select().from(smsCampaignSteps).where(eq(smsCampaignSteps.id, id)).limit(1);
+    return step;
+  }
+
+  async createSmsCampaignStep(data: Partial<SmsCampaignStep> & { campaignId: string; stepOrder: number; messageTemplate: string }): Promise<SmsCampaignStep> {
+    const [step] = await db.insert(smsCampaignSteps).values(data).returning();
+    return step;
+  }
+
+  async updateSmsCampaignStep(id: string, data: Partial<SmsCampaignStep>): Promise<SmsCampaignStep | undefined> {
+    const [step] = await db.update(smsCampaignSteps).set(data).where(eq(smsCampaignSteps.id, id)).returning();
+    return step;
+  }
+
+  async deleteSmsCampaignStep(id: string): Promise<boolean> {
+    const result = await db.delete(smsCampaignSteps).where(eq(smsCampaignSteps.id, id)).returning();
     return result.length > 0;
   }
 }

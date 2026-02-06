@@ -4,6 +4,13 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **SMS Campaigns System (Fully Functional)**:
+  - Added `sms_campaigns` and `sms_campaign_steps` tables with cascade deletes
+  - Full CRUD API: `/api/sms-campaigns`, `/api/sms-campaign-steps`
+  - SMS agent endpoint `/api/sms-agents` filters `ai_agents` table by voice_type="Speed to Lead" / voice_id="sms-agent" / voice_model="sms"
+  - Campaign creation dialog includes SMS agent selector (shows agents like "Benji")
+  - Campaign steps support delay_minutes and message_template with variable support
+  - Multi-tenant ownership checks on all campaign and step operations
 - **Webhook Integration for Lead Sources (Angi, Google LSA, Thumbtack)**:
   - Added `webhook_logs` and `webhook_secrets` tables for tracking and securing webhooks
   - Webhook endpoints: `/api/webhooks/angi`, `/api/webhooks/google-lsa`, `/api/webhooks/:source`
