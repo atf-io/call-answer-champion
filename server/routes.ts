@@ -423,6 +423,55 @@ export function registerRoutes(app: Express) {
           result = await deleteRetellAgent(RETELL_API_KEY, userId, agentId);
           break;
 
+        case "create-web-call": {
+          const { testConfig } = req.body;
+          let retellAgentId = agentId;
+
+          if (!retellAgentId && !testConfig) {
+            return res.status(400).json({ error: "Either agentId or testConfig is required" });
+          }
+
+          if (retellAgentId) {
+            const agent = await storage.getAgent(retellAgentId, userId);
+            if (!agent || !agent.retellAgentId) {
+              return res.status(400).json({ error: "Agent not found or not synced with Retell" });
+            }
+            retellAgentId = agent.retellAgentId;
+          }
+
+          const webCallBody: any = {};
+          if (retellAgentId) {
+            webCallBody.agent_id = retellAgentId;
+          }
+          if (testConfig && retellAgentId) {
+            webCallBody.agent_override = {
+              voice_id: testConfig.voice_id,
+              language: testConfig.language,
+              agent_prompt: testConfig.prompt,
+              begin_message: testConfig.greeting_message,
+              voice_temperature: testConfig.voice_temperature,
+              voice_speed: testConfig.voice_speed,
+            };
+          }
+
+          const webCallResponse = await fetch(`${RETELL_BASE_URL}/v2/create-web-call`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RETELL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(webCallBody),
+          });
+
+          if (!webCallResponse.ok) {
+            const errorText = await webCallResponse.text();
+            throw new Error(`Failed to create web call: ${errorText}`);
+          }
+
+          result = await webCallResponse.json();
+          break;
+        }
+
         case "sync-calls":
           result = await syncCallsToDatabase(RETELL_API_KEY, userId, agentId, limit);
           break;

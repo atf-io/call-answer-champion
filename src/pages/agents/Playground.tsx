@@ -29,9 +29,10 @@ import {
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { RetellWebClient } from "retell-client-js-sdk";
 import { formatDistanceToNow } from "date-fns";
+import { api } from "@/lib/api";
 
 // Voice options from AgentEdit
 const voiceOptions = [
@@ -79,7 +80,8 @@ const RECORDINGS_STORAGE_KEY = "playground_recordings";
 
 const Playground = () => {
   const { agents, loading: agentsLoading } = useAgents();
-  const { session } = useAuth();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   // Configuration state
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -148,11 +150,11 @@ const Playground = () => {
       const agent = agents.find(a => a.id === selectedAgentId);
       if (agent) {
         setCustomPrompt(agent.personality || "");
-        setGreetingMessage(agent.greeting_message || "Hello! How can I help you today?");
-        setSelectedVoice(agent.voice_id || "11labs-Adrian");
+        setGreetingMessage(agent.greetingMessage || "Hello! How can I help you today?");
+        setSelectedVoice(agent.voiceId || "11labs-Adrian");
         setSelectedLanguage(agent.language || "en-US");
-        setVoiceTemperature(agent.voice_temperature || 1);
-        setVoiceSpeed(agent.voice_speed || 1);
+        setVoiceTemperature(Number(agent.voiceTemperature) || 1);
+        setVoiceSpeed(Number(agent.voiceSpeed) || 1);
       }
     }
   }, [selectedAgentId, agents]);
@@ -201,37 +203,23 @@ const Playground = () => {
   };
 
   const fetchRecordingUrl = useCallback(async (callId: string): Promise<string | null> => {
-    if (!session?.access_token) return null;
+    if (!user) return null;
     
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/retell-sync`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            action: "get-call",
-            agentId: callId,
-          }),
-        }
-      );
-      
-      if (!response.ok) return null;
-      
-      const callData = await response.json();
+      const callData = await api.post<any>("/api/retell-sync", {
+        action: "get-call",
+        agentId: callId,
+      });
       return callData.recording_url || null;
     } catch (error) {
       console.error("Failed to fetch recording:", error);
       return null;
     }
-  }, [session]);
+  }, [user]);
 
   const startCall = useCallback(async () => {
-    if (!session?.access_token) {
-      toast.error("Please sign in to test agents");
+    if (!user) {
+      toast({ title: "Please sign in to test agents", variant: "destructive" });
       return;
     }
 
@@ -240,36 +228,20 @@ const Playground = () => {
     setCallDuration(0);
 
     try {
-      // Create web call through edge function
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/retell-sync`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            action: "create-web-call",
-            agentId: selectedAgentId || undefined,
-            testConfig: !selectedAgentId ? {
-              voice_id: selectedVoice,
-              language: selectedLanguage,
-              prompt: customPrompt,
-              greeting_message: greetingMessage,
-              voice_temperature: voiceTemperature,
-              voice_speed: voiceSpeed,
-            } : undefined,
-          }),
-        }
-      );
+      const callResponse = await api.post<{ access_token: string; call_id: string }>("/api/retell-sync", {
+        action: "create-web-call",
+        agentId: selectedAgentId || undefined,
+        testConfig: !selectedAgentId ? {
+          voice_id: selectedVoice,
+          language: selectedLanguage,
+          prompt: customPrompt,
+          greeting_message: greetingMessage,
+          voice_temperature: voiceTemperature,
+          voice_speed: voiceSpeed,
+        } : undefined,
+      });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create web call");
-      }
-
-      const { access_token, call_id } = await response.json();
+      const { access_token, call_id } = callResponse;
       setCurrentCallId(call_id);
 
       // Initialize Retell client
@@ -281,7 +253,7 @@ const Playground = () => {
         console.log("Call started");
         setIsCallActive(true);
         setIsConnecting(false);
-        toast.success("Call connected!");
+        toast({ title: "Call connected!" });
       });
 
       client.on("call_ended", async () => {
@@ -289,7 +261,7 @@ const Playground = () => {
         setIsCallActive(false);
         setIsConnecting(false);
         setAgentSpeaking(false);
-        toast.info("Call ended");
+        toast({ title: "Call ended" });
         
         // Save recording with pending status
         if (call_id) {
@@ -344,7 +316,7 @@ const Playground = () => {
 
       client.on("error", (error) => {
         console.error("Retell error:", error);
-        toast.error("Call error occurred");
+        toast({ title: "Call error occurred", variant: "destructive" });
         setIsCallActive(false);
         setIsConnecting(false);
       });
@@ -357,10 +329,10 @@ const Playground = () => {
 
     } catch (error) {
       console.error("Failed to start call:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to start call");
+      toast({ title: error instanceof Error ? error.message : "Failed to start call", variant: "destructive" });
       setIsConnecting(false);
     }
-  }, [session, selectedAgentId, selectedVoice, selectedLanguage, customPrompt, greetingMessage, voiceTemperature, voiceSpeed, recordings, saveRecordings, fetchRecordingUrl, callDuration, transcript]);
+  }, [user, toast, selectedAgentId, selectedVoice, selectedLanguage, customPrompt, greetingMessage, voiceTemperature, voiceSpeed, recordings, saveRecordings, fetchRecordingUrl, callDuration, transcript]);
 
   const endCall = useCallback(() => {
     if (retellClient) {
@@ -407,7 +379,7 @@ const Playground = () => {
         saveRecordings(updated);
         audioRef.current.src = url;
       } else {
-        toast.error("Recording not available yet. Please try again later.");
+        toast({ title: "Recording not available yet. Please try again later.", variant: "destructive" });
         return;
       }
     } else {
@@ -419,7 +391,7 @@ const Playground = () => {
       setPlayingRecordingId(recording.id);
     } catch (error) {
       console.error("Failed to play recording:", error);
-      toast.error("Failed to play recording");
+      toast({ title: "Failed to play recording", variant: "destructive" });
     }
   }, [playingRecordingId, recordings, saveRecordings, fetchRecordingUrl]);
   
@@ -437,7 +409,7 @@ const Playground = () => {
       audioRef.current?.pause();
       setPlayingRecordingId(null);
     }
-    toast.success("Recording deleted");
+    toast({ title: "Recording deleted" });
   }, [recordings, saveRecordings, playingRecordingId]);
   
   const retryFetchRecording = useCallback(async (recording: CallRecording) => {
@@ -452,9 +424,9 @@ const Playground = () => {
           : r
       );
       saveRecordings(updated);
-      toast.success("Recording loaded");
+      toast({ title: "Recording loaded" });
     } else {
-      toast.error("Recording still not available. It may take a few minutes.");
+      toast({ title: "Recording still not available. It may take a few minutes.", variant: "destructive" });
     }
   }, [recordings, saveRecordings, fetchRecordingUrl]);
 
@@ -508,7 +480,7 @@ const Playground = () => {
                         <SelectItem value="">Custom Configuration</SelectItem>
                         {agents.map((agent) => (
                           <SelectItem key={agent.id} value={agent.id}>
-                            {agent.name} {agent.retell_agent_id && "(Synced)"}
+                            {agent.name} {agent.retellAgentId && "(Synced)"}
                           </SelectItem>
                         ))}
                       </SelectContent>
