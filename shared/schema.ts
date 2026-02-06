@@ -15,7 +15,7 @@ export const users = pgTable("users", {
 
 export const profiles = pgTable("profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  userId: text("user_id").notNull().unique(),
   email: text("email"),
   fullName: text("full_name"),
   companyName: text("company_name"),
@@ -38,10 +38,10 @@ export const profiles = pgTable("profiles", {
 
 export const aiAgents = pgTable("ai_agents", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   name: text("name").notNull(),
   retellAgentId: text("retell_agent_id"),
-  voiceType: text("voice_type").default("Professional Female"),
+  voiceType: text("voice_type").default("11labs-Emma"),
   personality: text("personality").default("friendly and professional"),
   greetingMessage: text("greeting_message").default("Hello! How can I help you today?"),
   scheduleStart: text("schedule_start").default("18:00"),
@@ -79,7 +79,7 @@ export const aiAgents = pgTable("ai_agents", {
 
 export const googleIntegrations = pgTable("google_integrations", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   businessName: text("business_name").notNull(),
   googlePlaceId: text("google_place_id"),
   isConnected: boolean("is_connected").default(false),
@@ -90,7 +90,7 @@ export const googleIntegrations = pgTable("google_integrations", {
 
 export const reviews = pgTable("reviews", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   googleIntegrationId: uuid("google_integration_id").references(() => googleIntegrations.id, { onDelete: "cascade" }),
   googleReviewId: text("google_review_id"),
   authorName: text("author_name").notNull(),
@@ -107,7 +107,7 @@ export const reviews = pgTable("reviews", {
 
 export const callLogs = pgTable("call_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   agentId: uuid("agent_id").references(() => aiAgents.id, { onDelete: "set null" }),
   callerNumber: text("caller_number"),
   durationSeconds: integer("duration_seconds").default(0),
@@ -120,7 +120,7 @@ export const callLogs = pgTable("call_logs", {
 
 export const userSettings = pgTable("user_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  userId: text("user_id").notNull().unique(),
   retellApiKeyConfigured: boolean("retell_api_key_configured").default(false),
   googleApiConfigured: boolean("google_api_configured").default(false),
   notificationEmail: boolean("notification_email").default(true),
@@ -134,7 +134,7 @@ export const userSettings = pgTable("user_settings", {
 
 export const knowledgeBaseEntries = pgTable("knowledge_base_entries", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   agentId: uuid("agent_id").references(() => aiAgents.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   sourceType: text("source_type").notNull(),
@@ -149,7 +149,7 @@ export const knowledgeBaseEntries = pgTable("knowledge_base_entries", {
 
 export const phoneNumbers = pgTable("phone_numbers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   retellPhoneNumberId: text("retell_phone_number_id").unique(),
   phoneNumber: text("phone_number").notNull(),
   nickname: text("nickname"),
@@ -164,7 +164,7 @@ export const phoneNumbers = pgTable("phone_numbers", {
 
 export const contacts = pgTable("contacts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: text("user_id").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
   email: text("email"),

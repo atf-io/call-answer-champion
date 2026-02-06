@@ -102,8 +102,8 @@ export function setupAuth(app: Express) {
       });
 
       // Create profile and settings for the new user
-      await storage.createProfile({ userId: user.id, email, fullName });
-      await storage.createSettings({ userId: user.id });
+      await storage.createProfile({ userId: String(user.id), email, fullName });
+      await storage.createSettings({ userId: String(user.id) });
 
       req.login({ id: user.id, username: user.username }, (err) => {
         if (err) return next(err);

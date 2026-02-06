@@ -50,7 +50,7 @@ const AgentConfigStep = ({
 }: AgentConfigStepProps) => {
   const [voiceSettings, setVoiceSettings] = useState<VoiceAgentSettings>({
     name: `${businessProfile.business_name || "My"} Voice Agent`,
-    voiceType: "Professional Female",
+    voiceType: "11labs-Emma",
     personality: "friendly and professional",
     greeting: `Hello! Thank you for calling ${businessProfile.business_name || "our business"}. How can I help you today?`,
     scheduleStart: "18:00",
@@ -62,7 +62,7 @@ const AgentConfigStep = ({
     name: `${businessProfile.business_name || "My"} Speed to Lead`,
     responseTime: 30,
     maxAttempts: 3,
-    voiceType: "Professional Female",
+    voiceType: "11labs-Emma",
     qualificationScript: `Hi, this is ${businessProfile.business_name || "our team"}. I'm calling about the inquiry you just submitted. Do you have a moment to discuss your needs?`,
     leadSources: [],
   });
