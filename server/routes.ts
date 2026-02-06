@@ -318,6 +318,151 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Lead Analytics endpoint
+  app.get("/api/lead-analytics", requireAuth, async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const userId = req.user!.id;
+
+      const contacts = await storage.getContacts(userId);
+      const callLogs = await storage.getCallLogs(userId, 10000);
+
+      const toDate = (val: any): Date => {
+        if (val instanceof Date) return val;
+        return new Date(String(val));
+      };
+      const toDateStr = (val: any): string => toDate(val).toISOString().split("T")[0];
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const filteredContacts = contacts.filter(
+        (c: any) => toDate(c.createdAt) >= startDate
+      );
+      const filteredCalls = callLogs.filter(
+        (c: any) => toDate(c.createdAt) >= startDate
+      );
+
+      const smsContacts = filteredContacts.filter(
+        (c: any) => c.source?.toLowerCase() === "sms"
+      );
+      const voiceContacts = filteredContacts.filter(
+        (c: any) => c.source?.toLowerCase() === "voice_ai" || c.source?.toLowerCase() === "voice"
+      );
+
+      const smsLeads = smsContacts.length;
+      const voiceLeads = voiceContacts.length + filteredCalls.length;
+      const totalLeads = filteredContacts.length + filteredCalls.length;
+
+      const convertedLeads = filteredContacts.filter(
+        (c: any) => c.status?.toLowerCase() === "converted"
+      ).length;
+      const pendingLeads = filteredContacts.filter(
+        (c: any) => c.status?.toLowerCase() === "pending" || c.status?.toLowerCase() === "new" || c.status?.toLowerCase() === "contacted"
+      ).length;
+      const lostLeads = filteredContacts.filter(
+        (c: any) => c.status?.toLowerCase() === "lost"
+      ).length;
+
+      const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+      const leadsBySource: Record<string, number> = {};
+      filteredContacts.forEach((c: any) => {
+        const source = c.source || "unknown";
+        leadsBySource[source] = (leadsBySource[source] || 0) + 1;
+      });
+      if (filteredCalls.length > 0) {
+        leadsBySource["voice_call"] = (leadsBySource["voice_call"] || 0) + filteredCalls.length;
+      }
+
+      const leadsByDay: { date: string; sms: number; voice: number; total: number }[] = [];
+      const outcomesByDay: { date: string; converted: number; pending: number; lost: number }[] = [];
+
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const displayDate = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+        const daySms = filteredContacts.filter(
+          (c: any) => toDateStr(c.createdAt) === dateStr && c.source?.toLowerCase() === "sms"
+        ).length;
+
+        const dayVoice = filteredContacts.filter(
+          (c: any) => toDateStr(c.createdAt) === dateStr && (c.source?.toLowerCase() === "voice_ai" || c.source?.toLowerCase() === "voice")
+        ).length + filteredCalls.filter(
+          (c: any) => toDateStr(c.createdAt) === dateStr
+        ).length;
+
+        leadsByDay.push({ date: displayDate, sms: daySms, voice: dayVoice, total: daySms + dayVoice });
+
+        const dayContacts = filteredContacts.filter((c: any) => toDateStr(c.createdAt) === dateStr);
+        outcomesByDay.push({
+          date: displayDate,
+          converted: dayContacts.filter((c: any) => c.status?.toLowerCase() === "converted").length,
+          pending: dayContacts.filter((c: any) => c.status?.toLowerCase() === "pending" || c.status?.toLowerCase() === "new").length,
+          lost: dayContacts.filter((c: any) => c.status?.toLowerCase() === "lost").length,
+        });
+      }
+
+      const sentimentBreakdown = { positive: 0, neutral: 0, negative: 0 };
+      filteredCalls.forEach((c: any) => {
+        if (c.sentiment === "positive") sentimentBreakdown.positive++;
+        else if (c.sentiment === "negative") sentimentBreakdown.negative++;
+        else sentimentBreakdown.neutral++;
+      });
+      filteredContacts.forEach((c: any) => {
+        if (c.notes?.toLowerCase().includes("positive") || c.status?.toLowerCase() === "converted") {
+          sentimentBreakdown.positive++;
+        } else if (c.notes?.toLowerCase().includes("negative") || c.status?.toLowerCase() === "lost") {
+          sentimentBreakdown.negative++;
+        } else {
+          sentimentBreakdown.neutral++;
+        }
+      });
+
+      const thisWeekStart = new Date();
+      thisWeekStart.setDate(thisWeekStart.getDate() - 7);
+      const lastWeekStart = new Date();
+      lastWeekStart.setDate(lastWeekStart.getDate() - 14);
+
+      const thisWeekLeads = [
+        ...filteredContacts.filter((c: any) => toDate(c.createdAt) >= thisWeekStart),
+        ...filteredCalls.filter((c: any) => toDate(c.createdAt) >= thisWeekStart),
+      ].length;
+
+      const lastWeekLeads = [
+        ...filteredContacts.filter((c: any) => toDate(c.createdAt) >= lastWeekStart && toDate(c.createdAt) < thisWeekStart),
+        ...filteredCalls.filter((c: any) => toDate(c.createdAt) >= lastWeekStart && toDate(c.createdAt) < thisWeekStart),
+      ].length;
+
+      const weekOverWeekChange = lastWeekLeads > 0
+        ? Math.round(((thisWeekLeads - lastWeekLeads) / lastWeekLeads) * 100)
+        : thisWeekLeads > 0 ? 100 : 0;
+
+      res.json({
+        totalLeads,
+        smsLeads,
+        voiceLeads,
+        convertedLeads,
+        pendingLeads,
+        lostLeads,
+        conversionRate,
+        avgResponseTime: 0,
+        leadsBySource,
+        leadsByDay,
+        outcomesByDay,
+        sentimentBreakdown,
+        thisWeekLeads,
+        lastWeekLeads,
+        weekOverWeekChange,
+      });
+    } catch (error) {
+      console.error("Lead analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch lead analytics" });
+    }
+  });
+
   // Contacts routes
   app.get("/api/contacts", requireAuth, async (req, res) => {
     try {

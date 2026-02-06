@@ -4,6 +4,11 @@
 VoiceHub is an AI-powered business communication platform that integrates with Retell.ai for voice agents and manages Google Reviews. The platform allows businesses to create and manage AI voice agents for after-hours call handling, lead intake, and automated customer service.
 
 ## Recent Changes (February 2026)
+- **Lead Analytics Dashboard**: Synced from GitHub/Lovable commit (abaa9da):
+  - Added LeadAnalytics component with recharts (area chart, pie chart, bar chart, sentiment)
+  - Created useLeadAnalytics hook using Express API endpoint
+  - Added `/api/lead-analytics` backend endpoint aggregating contacts + call_logs
+  - Updated Dashboard with Overview/Lead Analytics tabs
 - **GitHub Sync - SMS & Campaign Features**: Synced 20+ Lovable commits including:
   - SMS agent editing with full CRUD (Prompt, Settings, Campaigns, Test tabs)
   - Campaigns page with campaign management placeholder
@@ -45,7 +50,7 @@ VoiceHub is an AI-powered business communication platform that integrates with R
 - `src/contexts/AuthContext.tsx` - Authentication state management
 - `src/hooks/` - React Query hooks for all data fetching
   - useAgents, useCallLogs, useKnowledgeBase, usePhoneNumbers
-  - useReviews, useSettings, useRetell
+  - useReviews, useSettings, useRetell, useLeadAnalytics
   - useSmsAgents, useSmsCampaigns (Express API integration)
 - `src/lib/api.ts` - API client for server communication
 
@@ -61,6 +66,7 @@ VoiceHub is an AI-powered business communication platform that integrates with R
 - `/api/retell-sync` - Retell.ai integration (agents, calls, phone numbers)
 - `/api/scrape-business` - Business data extraction
 - `/api/scrape-knowledge-base` - URL content scraping for knowledge base
+- `/api/lead-analytics` - Lead analytics aggregation (contacts + call_logs)
 - `/api/call-logs`, `/api/reviews`, `/api/settings`, `/api/profile`
 
 ## Environment Variables Required
