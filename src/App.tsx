@@ -3,8 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -36,6 +37,24 @@ import Contacts from "./pages/agents/Contacts";
 
 const queryClient = new QueryClient();
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -46,29 +65,29 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/agents" element={<AgentsList />} />
-            <Route path="/dashboard/agents/:agentId/edit" element={<AgentEdit />} />
-            <Route path="/dashboard/agents/knowledge" element={<KnowledgeBase />} />
-            <Route path="/dashboard/agents/phone-numbers" element={<PhoneNumbers />} />
-            <Route path="/dashboard/agents/batch-call" element={<BatchCall />} />
-            <Route path="/dashboard/agents/call-history" element={<CallHistory />} />
-            <Route path="/dashboard/agents/chat-history" element={<ChatHistory />} />
-            <Route path="/dashboard/agents/analytics" element={<AgentAnalytics />} />
-            <Route path="/dashboard/agents/quality" element={<QualityAssurance />} />
-            <Route path="/dashboard/agents/alerting" element={<Alerting />} />
-            <Route path="/dashboard/agents/billing" element={<Billing />} />
-            <Route path="/dashboard/agents/settings" element={<AgentSettings />} />
-            <Route path="/dashboard/agents/playground" element={<Playground />} />
-            <Route path="/dashboard/agents/sms" element={<SMS />} />
-            <Route path="/dashboard/agents/sms/:agentId" element={<SMS />} />
-            <Route path="/dashboard/agents/sms-analytics" element={<SmsAnalytics />} />
-            <Route path="/dashboard/agents/sms-simulator" element={<SmsSimulator />} />
-            <Route path="/dashboard/agents/campaigns" element={<Campaigns />} />
-            <Route path="/dashboard/agents/contacts" element={<Contacts />} />
-            <Route path="/dashboard/reviews" element={<Reviews />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/agents" element={<ProtectedRoute><AgentsList /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/:agentId/edit" element={<ProtectedRoute><AgentEdit /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/knowledge" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/phone-numbers" element={<ProtectedRoute><PhoneNumbers /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/batch-call" element={<ProtectedRoute><BatchCall /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/call-history" element={<ProtectedRoute><CallHistory /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/chat-history" element={<ProtectedRoute><ChatHistory /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/analytics" element={<ProtectedRoute><AgentAnalytics /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/quality" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/alerting" element={<ProtectedRoute><Alerting /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/settings" element={<ProtectedRoute><AgentSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/playground" element={<ProtectedRoute><Playground /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/sms" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/sms/:agentId" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/sms-analytics" element={<ProtectedRoute><SmsAnalytics /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/sms-simulator" element={<ProtectedRoute><SmsSimulator /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+            <Route path="/dashboard/agents/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+            <Route path="/dashboard/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
