@@ -84,7 +84,7 @@ const Playground = () => {
   const { toast } = useToast();
   
   // Configuration state
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("custom");
   const [customPrompt, setCustomPrompt] = useState("");
   const [greetingMessage, setGreetingMessage] = useState("Hello! How can I help you today?");
   const [selectedVoice, setSelectedVoice] = useState("11labs-Adrian");
@@ -146,7 +146,7 @@ const Playground = () => {
 
   // Load agent config when selected
   useEffect(() => {
-    if (selectedAgentId) {
+    if (selectedAgentId && selectedAgentId !== "custom") {
       const agent = agents.find(a => a.id === selectedAgentId);
       if (agent) {
         setCustomPrompt(agent.personality || "");
@@ -195,7 +195,7 @@ const Playground = () => {
   };
   
   const getAgentName = () => {
-    if (selectedAgentId) {
+    if (selectedAgentId && selectedAgentId !== "custom") {
       const agent = agents.find(a => a.id === selectedAgentId);
       return agent?.name || "Unknown Agent";
     }
@@ -230,8 +230,8 @@ const Playground = () => {
     try {
       const callResponse = await api.post<{ access_token: string; call_id: string }>("/api/retell-sync", {
         action: "create-web-call",
-        agentId: selectedAgentId || undefined,
-        testConfig: !selectedAgentId ? {
+        agentId: selectedAgentId !== "custom" ? selectedAgentId : undefined,
+        testConfig: selectedAgentId === "custom" ? {
           voice_id: selectedVoice,
           language: selectedLanguage,
           prompt: customPrompt,
@@ -477,7 +477,7 @@ const Playground = () => {
                         <SelectValue placeholder="Choose an agent or configure custom settings" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Custom Configuration</SelectItem>
+                        <SelectItem value="custom">Custom Configuration</SelectItem>
                         {agents.map((agent) => (
                           <SelectItem key={agent.id} value={agent.id}>
                             {agent.name} {agent.retellAgentId && "(Synced)"}

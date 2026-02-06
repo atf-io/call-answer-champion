@@ -703,6 +703,58 @@ export function registerRoutes(app: Express) {
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Failed to scrape URL" });
     }
   });
+
+  app.get("/api/sms-agents", requireAuth, async (_req, res) => {
+    res.json([]);
+  });
+
+  app.get("/api/sms-agents/:id", requireAuth, async (req, res) => {
+    res.status(404).json({ error: "SMS agent not found" });
+  });
+
+  app.post("/api/sms-agents", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS agents feature coming soon" });
+  });
+
+  app.patch("/api/sms-agents/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS agents feature coming soon" });
+  });
+
+  app.delete("/api/sms-agents/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS agents feature coming soon" });
+  });
+
+  app.get("/api/sms-campaigns", requireAuth, async (_req, res) => {
+    res.json([]);
+  });
+
+  app.get("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
+    res.status(404).json({ error: "Campaign not found" });
+  });
+
+  app.post("/api/sms-campaigns", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
+
+  app.patch("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
+
+  app.delete("/api/sms-campaigns/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
+
+  app.post("/api/sms-campaign-steps", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
+
+  app.patch("/api/sms-campaign-steps/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
+
+  app.delete("/api/sms-campaign-steps/:id", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "SMS campaigns feature coming soon" });
+  });
 }
 
 // Retell API helper functions
