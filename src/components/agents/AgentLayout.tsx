@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import AgentSidebar from "./AgentSidebar";
 import { Loader2 } from "lucide-react";
@@ -11,14 +9,7 @@ interface AgentLayoutProps {
 }
 
 const AgentLayout = ({ children, title, description }: AgentLayoutProps) => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
-  }, [user, loading, navigate]);
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -26,10 +17,6 @@ const AgentLayout = ({ children, title, description }: AgentLayoutProps) => {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   return (
