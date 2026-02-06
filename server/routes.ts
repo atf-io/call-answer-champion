@@ -1138,8 +1138,18 @@ async function purchasePhoneNumber(apiKey: string, userId: number, areaCode?: st
 function buildRetellAgentConfig(config: any) {
   const retellConfig: any = {};
 
-  if (config.voice_id) retellConfig.voice_id = config.voice_id;
-  if (config.voice_model) retellConfig.voice_model = config.voice_model;
+  const validVoiceModels = [
+    "eleven_turbo_v2", "eleven_flash_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5",
+    "eleven_multilingual_v2", "sonic-2", "sonic-3", "sonic-3-latest",
+    "sonic-turbo", "tts-1", "gpt-4o-mini-tts",
+    "speech-02-turbo", "speech-2.8-turbo",
+  ];
+  if (config.voice_id && !["sms-agent", "text-agent"].includes(config.voice_id)) {
+    retellConfig.voice_id = config.voice_id;
+  }
+  if (config.voice_model && validVoiceModels.includes(config.voice_model)) {
+    retellConfig.voice_model = config.voice_model;
+  }
   if (config.voice_temperature !== undefined) retellConfig.voice_temperature = config.voice_temperature;
   if (config.voice_speed !== undefined) retellConfig.voice_speed = config.voice_speed;
   if (config.volume !== undefined) retellConfig.volume = config.volume;

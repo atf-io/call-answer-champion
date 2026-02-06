@@ -44,9 +44,19 @@ const voiceOptions = [
 ];
 
 const voiceModels = [
-  { id: "eleven_turbo_v2", name: "ElevenLabs Turbo v2 (Fast)" },
+  { id: "eleven_turbo_v2", name: "ElevenLabs Turbo v2" },
+  { id: "eleven_flash_v2", name: "ElevenLabs Flash v2" },
+  { id: "eleven_turbo_v2_5", name: "ElevenLabs Turbo v2.5" },
+  { id: "eleven_flash_v2_5", name: "ElevenLabs Flash v2.5" },
   { id: "eleven_multilingual_v2", name: "ElevenLabs Multilingual v2" },
-  { id: "eleven_monolingual_v1", name: "ElevenLabs Monolingual v1" },
+  { id: "sonic-2", name: "Cartesia Sonic 2" },
+  { id: "sonic-3", name: "Cartesia Sonic 3" },
+  { id: "sonic-3-latest", name: "Cartesia Sonic 3 (Latest)" },
+  { id: "sonic-turbo", name: "Cartesia Sonic Turbo" },
+  { id: "tts-1", name: "OpenAI TTS-1" },
+  { id: "gpt-4o-mini-tts", name: "OpenAI GPT-4o Mini TTS" },
+  { id: "speech-02-turbo", name: "Deepgram Speech 02 Turbo" },
+  { id: "speech-2.8-turbo", name: "Deepgram Speech 2.8 Turbo" },
 ];
 
 const ambientSounds = [
