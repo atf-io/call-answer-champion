@@ -43,7 +43,7 @@ Keep your responses concise and suitable for SMS (under 160 characters if possib
   ];
 
   try {
-    const response = await fetch('https://ai.lovable.dev/api/v2/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lovableApiKey}`,

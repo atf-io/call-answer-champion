@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -15,13 +16,19 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Copy,
+  RefreshCw,
+  Webhook
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Settings = () => {
-  const { settings, profile, loading, updateSettings, updateProfile } = useSettings();
+  const { settings, profile, loading, updateSettings, updateProfile, refetch } = useSettings();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [generatingSecret, setGeneratingSecret] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -34,7 +41,7 @@ const Settings = () => {
   });
 
   // Update form when data loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData((prev) => ({
         ...prev,
@@ -52,7 +59,48 @@ const Settings = () => {
         timezone: settings.timezone,
       }));
     }
-  });
+  }, [profile, settings]);
+
+  const generateWebhookSecret = async () => {
+    if (!user) return;
+    setGeneratingSecret(true);
+    try {
+      // Generate a secure random secret
+      const array = new Uint8Array(32);
+      crypto.getRandomValues(array);
+      const newSecret = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+      
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({ user_id: user.id, lead_webhook_secret: newSecret });
+      
+      if (error) throw error;
+      
+      refetch();
+      toast({
+        title: "Webhook Secret Generated",
+        description: "Your new webhook secret has been created.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate webhook secret",
+      });
+    } finally {
+      setGeneratingSecret(false);
+    }
+  };
+
+  const copyWebhookSecret = () => {
+    if (settings?.leadWebhookSecret) {
+      navigator.clipboard.writeText(settings.leadWebhookSecret);
+      toast({
+        title: "Copied",
+        description: "Webhook secret copied to clipboard",
+      });
+    }
+  };
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -167,7 +215,94 @@ const Settings = () => {
                     <h3 className="font-medium">Retell.ai</h3>
                     <p className="text-sm text-muted-foreground">AI voice agents for calls</p>
                   </div>
+            </div>
+          </div>
+
+          {/* Lead Webhook Section */}
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Webhook className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Lead Webhook</h2>
+                <p className="text-sm text-muted-foreground">Configure external lead integrations (Angi, Thumbtack, etc.)</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lead-webhook`}
+                    readOnly
+                    className="bg-muted/50 font-mono text-sm"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lead-webhook`);
+                      toast({ title: "Copied", description: "Webhook URL copied to clipboard" });
+                    }}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Use this URL in your lead aggregator settings to send leads to your account.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Webhook Secret</Label>
+                {settings?.leadWebhookSecret ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={settings.leadWebhookSecret}
+                      readOnly
+                      className="bg-muted/50 font-mono text-sm"
+                    />
+                    <Button variant="outline" size="icon" onClick={copyWebhookSecret}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={generateWebhookSecret}
+                      disabled={generatingSecret}
+                    >
+                      {generatingSecret ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      value="No secret generated"
+                      readOnly
+                      disabled
+                      className="bg-muted/50"
+                    />
+                    <Button onClick={generateWebhookSecret} disabled={generatingSecret}>
+                      {generatingSecret ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Key className="w-4 h-4 mr-2" />
+                      )}
+                      Generate Secret
+                    </Button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Include this secret in the <code className="bg-muted px-1 rounded">x-webhook-secret</code> header when calling the webhook.
+                </p>
+              </div>
+            </div>
                 <div className="flex items-center gap-3">
                   {settings?.retellApiKeyConfigured ? (
                     <span className="flex items-center gap-2 text-sm text-success">

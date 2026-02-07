@@ -12,6 +12,7 @@ export interface UserSettings {
   autoRespondReviews: boolean;
   reviewResponseTone: string;
   timezone: string;
+  leadWebhookSecret: string | null;
 }
 
 export interface UserProfile {
@@ -35,6 +36,7 @@ function mapSettings(data: any): UserSettings | null {
     autoRespondReviews: data.auto_respond_reviews ?? false,
     reviewResponseTone: data.review_response_tone ?? 'professional',
     timezone: data.timezone ?? 'America/New_York',
+    leadWebhookSecret: data.lead_webhook_secret ?? null,
   };
 }
 
