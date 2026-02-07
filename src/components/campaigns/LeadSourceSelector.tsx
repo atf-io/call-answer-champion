@@ -10,6 +10,9 @@ const LEAD_SOURCES = [
   { id: "homeadvisor", label: "HomeAdvisor" },
   { id: "yelp", label: "Yelp" },
   { id: "zillow", label: "Zillow" },
+  { id: "facebook", label: "Facebook" },
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
   { id: "manual", label: "Manual" },
 ] as const;
 
