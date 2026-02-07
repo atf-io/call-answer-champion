@@ -1,59 +1,50 @@
 
 
-# Plan: Add Google OAuth Credentials
+# Plan: Remove Google OAuth Redirect Issue
 
-The Google Business Profile integration is fully implemented and ready to go. We just need to add your OAuth credentials to enable the "Connect Google" button.
+## Problem Identified
 
-## What You'll Need to Provide
+The error appears because:
+1. You clicked "Connect Google" which redirected to Google's OAuth page
+2. The OAuth failed with a 403 error because the credentials aren't configured yet
+3. Now the browser is stuck on Google's error page, and every preview refresh tries to reload that invalid URL
 
-You have **3 credentials** from your Google Cloud Console:
+## Solution
 
-1. **Google Client ID** - This will be used in two places:
-   - As a public environment variable for the frontend (to redirect users to Google)
-   - As a backend secret (for the token exchange)
+I'll add a safety check to prevent the OAuth redirect when credentials aren't properly configured, so clicking "Connect Google" will show a helpful message instead of redirecting to a broken Google page.
 
-2. **Google Client Secret** - This is stored securely as a backend secret
+## Changes Required
 
-## What I'll Do
+### 1. Update `useGoogleBusinessAuth.ts`
+- Check if `GOOGLE_CLIENT_ID` is missing or still has the placeholder value `"YOUR_GOOGLE_CLIENT_ID"`
+- Show a toast notification explaining that Google OAuth needs to be configured
+- Prevent the redirect to Google
 
-### Step 1: Add the Backend Secrets
-I'll prompt you to securely enter:
-- `GOOGLE_OAUTH_CLIENT_ID` - Your Google Client ID
-- `GOOGLE_OAUTH_CLIENT_SECRET` - Your Google Client Secret
-
-### Step 2: Add the Frontend Environment Variable
-I'll add the Client ID to the `.env` file as `VITE_GOOGLE_OAUTH_CLIENT_ID` so the frontend can initiate the OAuth flow.
-
-### Step 3: Configure Redirect URI in Google Cloud Console
-You'll need to add this redirect URI to your Google Cloud Console's OAuth credentials:
-
-```
-https://id-preview--f07db186-d212-4c87-b3ec-ef4d9e85bcd2.lovable.app/auth/google/callback
-```
-
-If you've published your app, also add:
-```
-https://call-answer-champion.lovable.app/auth/google/callback
-```
-
-## How It Works
-
-Once configured, clicking "Connect Google" will:
-1. Redirect you to Google's consent screen
-2. After approval, Google redirects back with an authorization code
-3. The backend exchanges this code for access/refresh tokens
-4. Tokens are stored securely for syncing reviews
+### 2. Immediate Fix for Your Current Session
+After I make this change, you'll need to:
+- Click "Try again" or "Dismiss" on the Lovable preview error
+- Navigate back to `/dashboard/reviews`
 
 ---
 
-### Technical Details
+## Technical Details
 
-**Files to be modified:**
-- `.env` - Add `VITE_GOOGLE_OAUTH_CLIENT_ID`
+**File to modify:** `src/hooks/useGoogleBusinessAuth.ts`
 
-**Backend secrets to be added:**
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
+```typescript
+// Add validation for placeholder value
+const connectGoogle = useCallback(() => {
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    toast({
+      variant: 'destructive',
+      title: 'Configuration Required',
+      description: 'Google OAuth credentials have not been configured yet.',
+    });
+    return;
+  }
+  // ... rest of the code
+}, [getAuthUrl, toast]);
+```
 
-**No code changes required** - the implementation is already complete!
+This prevents the broken redirect and gives you a clear message instead.
 
