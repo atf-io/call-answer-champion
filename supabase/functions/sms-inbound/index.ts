@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,9 +9,58 @@ interface InboundSmsPayload {
   from: string;
   to: string;
   body: string;
-  // Retell-specific fields
   call_id?: string;
   retell_llm_dynamic_variables?: Record<string, string>;
+}
+
+// Send SMS via Retell API
+async function sendSmsViaRetell(
+  fromNumber: string,
+  toNumber: string,
+  message: string,
+  retellApiKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`[sms-inbound] Sending SMS from ${fromNumber} to ${toNumber}`);
+    
+    // Use send-message endpoint for sending responses
+    const response = await fetch('https://api.retellai.com/send-message', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${retellApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_number: fromNumber,
+        to_number: toNumber,
+        message: message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[sms-inbound] Retell SMS error:', response.status, errorText);
+      return { success: false, error: `Retell API error: ${response.status}` };
+    }
+
+    console.log('[sms-inbound] SMS sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[sms-inbound] Failed to send SMS:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+// Get user's active phone number
+async function getUserFromNumber(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const { data: phoneNumbers } = await supabase
+    .from('phone_numbers')
+    .select('phone_number')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1);
+
+  return phoneNumbers?.[0]?.phone_number || null;
 }
 
 // Call Lovable AI to generate agent response
@@ -88,6 +137,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const retellApiKey = Deno.env.get('RETELL_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: InboundSmsPayload = await req.json();
@@ -133,6 +183,10 @@ Deno.serve(async (req) => {
 
     console.log('[sms-inbound] Found conversation:', conversation.id, 'with agent:', agent.name);
 
+    // Get user's from number for sending responses
+    const fromNumber = await getUserFromNumber(supabase, userId);
+    const canSendSms = !!fromNumber && !!retellApiKey;
+
     // 1. Record the inbound message
     const { data: inboundMsg } = await supabase.from('sms_messages').insert({
       conversation_id: conversation.id,
@@ -176,7 +230,6 @@ Deno.serve(async (req) => {
         })
         .eq('id', conversation.id);
 
-      // Send escalation response
       const escalationResponse = agent.escalation_phone 
         ? `I understand you'd like to speak with someone directly. Please call us at ${agent.escalation_phone} or a team member will reach out to you shortly.`
         : "I understand you'd like to speak with someone directly. A team member will reach out to you shortly.";
@@ -188,7 +241,13 @@ Deno.serve(async (req) => {
         metadata: { escalation: true },
       });
 
-      // Update conversation
+      // Send escalation SMS
+      let smsSent = false;
+      if (canSendSms) {
+        const smsResult = await sendSmsViaRetell(fromNumber!, e164Phone, escalationResponse, retellApiKey!);
+        smsSent = smsResult.success;
+      }
+
       await supabase
         .from('sms_conversations')
         .update({
@@ -201,6 +260,7 @@ Deno.serve(async (req) => {
         success: true,
         action: 'escalated',
         response: escalationResponse,
+        sms_sent: smsSent,
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -251,7 +311,19 @@ Deno.serve(async (req) => {
       metadata: { ai_generated: true },
     });
 
-    // 8. Update conversation stats
+    // 8. Send SMS via Retell
+    let smsSent = false;
+    if (canSendSms) {
+      const smsResult = await sendSmsViaRetell(fromNumber!, e164Phone, aiResponse, retellApiKey!);
+      smsSent = smsResult.success;
+      if (!smsResult.success) {
+        console.error('[sms-inbound] Failed to send SMS response:', smsResult.error);
+      }
+    } else {
+      console.log('[sms-inbound] SMS delivery not available:', { hasFromNumber: !!fromNumber, hasRetellKey: !!retellApiKey });
+    }
+
+    // 9. Update conversation stats
     await supabase
       .from('sms_conversations')
       .update({
@@ -260,7 +332,7 @@ Deno.serve(async (req) => {
       })
       .eq('id', conversation.id);
 
-    // 9. Update contact last_contacted_at
+    // 10. Update contact last_contacted_at
     if (conversation.contact_id) {
       await supabase
         .from('contacts')
@@ -268,13 +340,12 @@ Deno.serve(async (req) => {
         .eq('id', conversation.contact_id);
     }
 
-    // TODO: Actually send the SMS response via Retell API
-
     return new Response(JSON.stringify({
       success: true,
       action: 'responded',
       response: aiResponse,
       conversation_id: conversation.id,
+      sms_sent: smsSent,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
