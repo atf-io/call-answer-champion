@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +14,55 @@ function renderTemplate(template: string, variables: Record<string, string>): st
   return result;
 }
 
+// Send SMS via Retell API
+async function sendSmsViaRetell(
+  fromNumber: string,
+  toNumber: string,
+  message: string,
+  retellApiKey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`[sms-processor] Sending SMS from ${fromNumber} to ${toNumber}`);
+    
+    const response = await fetch('https://api.retellai.com/send-message', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${retellApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_number: fromNumber,
+        to_number: toNumber,
+        message: message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[sms-processor] Retell SMS error:', response.status, errorText);
+      return { success: false, error: `Retell API error: ${response.status}` };
+    }
+
+    console.log('[sms-processor] SMS sent successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('[sms-processor] Failed to send SMS:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+// Get user's active phone number
+async function getUserFromNumber(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const { data: phoneNumbers } = await supabase
+    .from('phone_numbers')
+    .select('phone_number')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1);
+
+  return phoneNumbers?.[0]?.phone_number || null;
+}
+
 Deno.serve(async (req) => {
   console.log('[sms-processor] Starting scheduled processing');
 
@@ -24,6 +73,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const retellApiKey = Deno.env.get('RETELL_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Find enrollments that need processing
@@ -33,7 +83,7 @@ Deno.serve(async (req) => {
       .select(`
         *,
         sms_campaigns!inner(id, name, user_id, sms_agent_id),
-        sms_conversations!inner(id, lead_phone, lead_name, lead_email, service_details, sms_agent_id)
+        sms_conversations!inner(id, lead_phone, lead_name, lead_email, service_details, sms_agent_id, contact_id, message_count)
       `)
       .eq('status', 'active')
       .lte('next_message_at', now)
@@ -49,7 +99,7 @@ Deno.serve(async (req) => {
 
     console.log(`[sms-processor] Found ${enrollments?.length || 0} enrollments to process`);
 
-    const results: { enrollmentId: string; status: string; error?: string }[] = [];
+    const results: { enrollmentId: string; status: string; smsSent?: boolean; error?: string }[] = [];
 
     for (const enrollment of enrollments || []) {
       try {
@@ -77,6 +127,10 @@ Deno.serve(async (req) => {
           results.push({ enrollmentId: enrollment.id, status: 'completed' });
           continue;
         }
+
+        // Get user's from number for SMS sending
+        const fromNumber = await getUserFromNumber(supabase, enrollment.user_id);
+        const canSendSms = !!fromNumber && !!retellApiKey;
 
         // Get business profile for template variables
         const { data: profile } = await supabase
@@ -119,6 +173,23 @@ Deno.serve(async (req) => {
           },
         });
 
+        // Send SMS via Retell
+        let smsSent = false;
+        if (canSendSms) {
+          const smsResult = await sendSmsViaRetell(
+            fromNumber!, 
+            enrollment.sms_conversations.lead_phone, 
+            messageContent, 
+            retellApiKey!
+          );
+          smsSent = smsResult.success;
+          if (!smsResult.success) {
+            console.error('[sms-processor] SMS delivery failed:', smsResult.error);
+          }
+        } else {
+          console.log('[sms-processor] SMS delivery not available:', { hasFromNumber: !!fromNumber, hasRetellKey: !!retellApiKey });
+        }
+
         // Update conversation
         await supabase
           .from('sms_conversations')
@@ -127,9 +198,6 @@ Deno.serve(async (req) => {
             message_count: (enrollment.sms_conversations.message_count || 0) + 1,
           })
           .eq('id', enrollment.conversation_id);
-
-        // TODO: Actually send SMS via Retell API
-        // This would integrate with Retell's SMS sending capability
 
         // Check for next step
         const nextStepOrder = enrollment.current_step_order + 1;
@@ -154,7 +222,7 @@ Deno.serve(async (req) => {
             .eq('id', enrollment.id);
 
           console.log(`[sms-processor] Advanced to step ${nextStepOrder}, next message at ${nextMessageAt.toISOString()}`);
-          results.push({ enrollmentId: enrollment.id, status: 'advanced' });
+          results.push({ enrollmentId: enrollment.id, status: 'advanced', smsSent });
         } else {
           // No more steps, complete the enrollment
           await supabase
@@ -167,11 +235,11 @@ Deno.serve(async (req) => {
             .eq('id', enrollment.id);
 
           console.log(`[sms-processor] Enrollment ${enrollment.id} completed`);
-          results.push({ enrollmentId: enrollment.id, status: 'completed' });
+          results.push({ enrollmentId: enrollment.id, status: 'completed', smsSent });
         }
 
         // Update contact last_contacted_at
-        if (enrollment.sms_conversations.contact_id) {
+        if (enrollment.sms_conversations.contact_id && smsSent) {
           await supabase
             .from('contacts')
             .update({ last_contacted_at: new Date().toISOString() })

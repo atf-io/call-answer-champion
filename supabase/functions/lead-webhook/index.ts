@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +13,7 @@ interface LeadPayload {
   service?: string;
   address?: string;
   notes?: string;
-  user_id?: string; // For direct API calls with user context
+  user_id?: string;
 }
 
 // Template variable replacement
@@ -23,6 +23,59 @@ function renderTemplate(template: string, variables: Record<string, string>): st
     result = result.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
   }
   return result;
+}
+
+// Send SMS via Retell API
+async function sendSmsViaRetell(
+  fromNumber: string,
+  toNumber: string,
+  message: string,
+  retellApiKey: string
+): Promise<{ success: boolean; error?: string; chatId?: string }> {
+  try {
+    console.log(`[lead-webhook] Sending SMS from ${fromNumber} to ${toNumber}`);
+    
+    const response = await fetch('https://api.retellai.com/create-sms-chat', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${retellApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_number: fromNumber,
+        to_number: toNumber,
+        first_message: message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[lead-webhook] Retell SMS error:', response.status, errorText);
+      return { success: false, error: `Retell API error: ${response.status} - ${errorText}` };
+    }
+
+    const data = await response.json();
+    console.log('[lead-webhook] SMS sent successfully, chat_id:', data.chat_id);
+    return { success: true, chatId: data.chat_id };
+  } catch (error) {
+    console.error('[lead-webhook] Failed to send SMS:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+// Get user's active phone number for sending SMS
+async function getUserFromNumber(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const { data: phoneNumbers } = await supabase
+    .from('phone_numbers')
+    .select('phone_number')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(1);
+
+  if (phoneNumbers && phoneNumbers.length > 0) {
+    return phoneNumbers[0].phone_number;
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -42,6 +95,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const retellApiKey = Deno.env.get('RETELL_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: LeadPayload = await req.json();
@@ -60,7 +114,6 @@ Deno.serve(async (req) => {
     let userId: string | null = body.user_id || null;
 
     if (webhookSecret && !userId) {
-      // Find user by webhook secret
       const { data: settings, error: settingsError } = await supabase
         .from('user_settings')
         .select('user_id')
@@ -97,6 +150,17 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .single();
 
+    // Get user's from phone number for SMS sending
+    const fromNumber = await getUserFromNumber(supabase, userId);
+    const canSendSms = !!fromNumber && !!retellApiKey;
+    
+    if (!canSendSms) {
+      console.log('[lead-webhook] SMS delivery not available:', { 
+        hasFromNumber: !!fromNumber, 
+        hasRetellKey: !!retellApiKey 
+      });
+    }
+
     // 1. Create contact
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
@@ -124,7 +188,7 @@ Deno.serve(async (req) => {
 
     console.log('[lead-webhook] Created contact:', contact.id);
 
-    // 2. Find or create SMS agent (use first active one or first one)
+    // 2. Find or create SMS agent
     const { data: smsAgents } = await supabase
       .from('sms_agents')
       .select('id, name')
@@ -139,7 +203,6 @@ Deno.serve(async (req) => {
       smsAgentId = smsAgents[0].id;
       agentName = smsAgents[0].name;
     } else {
-      // Create a default SMS agent
       const { data: newAgent } = await supabase
         .from('sms_agents')
         .insert({
@@ -202,7 +265,7 @@ Deno.serve(async (req) => {
 
     console.log('[lead-webhook] Found matching campaigns:', campaigns?.length || 0);
 
-    const enrollments: { campaignId: string; campaignName: string; enrollmentId: string }[] = [];
+    const enrollments: { campaignId: string; campaignName: string; enrollmentId: string; smsSent?: boolean }[] = [];
 
     // Template variables for message rendering
     const firstName = body.name?.split(' ')[0] || 'there';
@@ -217,7 +280,6 @@ Deno.serve(async (req) => {
     // 5. Enroll in each matching campaign
     if (campaigns && campaigns.length > 0) {
       for (const campaign of campaigns) {
-        // Get first step of campaign
         const { data: firstStep } = await supabase
           .from('sms_campaign_steps')
           .select('*')
@@ -230,11 +292,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Calculate delay in minutes from days + hours
         const delayMinutes = (firstStep.delay_days || 0) * 1440 + (firstStep.delay_hours || 0) * 60;
         const nextMessageAt = new Date(Date.now() + delayMinutes * 60 * 1000);
 
-        // Create enrollment
         const { data: enrollment, error: enrollError } = await supabase
           .from('sms_campaign_enrollments')
           .insert({
@@ -246,7 +306,7 @@ Deno.serve(async (req) => {
             lead_source: body.source,
             current_step_order: 1,
             next_message_at: delayMinutes === 0 ? null : nextMessageAt.toISOString(),
-            status: delayMinutes === 0 ? 'active' : 'active',
+            status: 'active',
             metadata: { service: body.service, address: body.address },
           })
           .select()
@@ -257,13 +317,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        enrollments.push({
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          enrollmentId: enrollment.id,
-        });
-
-        console.log(`[lead-webhook] Enrolled in campaign ${campaign.name}, delay: ${delayMinutes}min`);
+        let smsSent = false;
 
         // If delay is 0, send first message immediately
         if (delayMinutes === 0) {
@@ -278,8 +332,24 @@ Deno.serve(async (req) => {
             metadata: { campaign_id: campaign.id, step_order: 1 },
           });
 
-          // Send via Retell (placeholder - actual SMS sending logic)
-          console.log(`[lead-webhook] Sending immediate message: ${messageContent.substring(0, 50)}...`);
+          // Send SMS via Retell if configured
+          if (canSendSms) {
+            const smsResult = await sendSmsViaRetell(fromNumber!, e164Phone, messageContent, retellApiKey!);
+            smsSent = smsResult.success;
+            
+            if (!smsResult.success) {
+              console.error('[lead-webhook] SMS delivery failed:', smsResult.error);
+            }
+          }
+
+          // Update conversation stats
+          await supabase
+            .from('sms_conversations')
+            .update({
+              last_message_at: new Date().toISOString(),
+              message_count: 1,
+            })
+            .eq('id', conversation.id);
 
           // Update enrollment to next step
           const { data: nextStep } = await supabase
@@ -301,7 +371,6 @@ Deno.serve(async (req) => {
               })
               .eq('id', enrollment.id);
           } else {
-            // No more steps, mark as completed
             await supabase
               .from('sms_campaign_enrollments')
               .update({
@@ -311,11 +380,20 @@ Deno.serve(async (req) => {
               .eq('id', enrollment.id);
           }
         }
+
+        enrollments.push({
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          enrollmentId: enrollment.id,
+          smsSent,
+        });
+
+        console.log(`[lead-webhook] Enrolled in campaign ${campaign.name}, delay: ${delayMinutes}min, SMS sent: ${smsSent}`);
       }
     }
 
     // Update contact last_contacted_at if we sent a message
-    if (enrollments.length > 0) {
+    if (enrollments.some(e => e.smsSent)) {
       await supabase
         .from('contacts')
         .update({ last_contacted_at: new Date().toISOString() })
@@ -327,6 +405,7 @@ Deno.serve(async (req) => {
       contact_id: contact.id,
       conversation_id: conversation.id,
       enrollments,
+      sms_enabled: canSendSms,
       message: `Contact created and enrolled in ${enrollments.length} campaign(s)`,
     }), {
       status: 200,
