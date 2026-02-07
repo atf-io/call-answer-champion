@@ -96,11 +96,19 @@ export function useGoogleBusinessAuth() {
 
   // Initiate Google OAuth flow
   const connectGoogle = useCallback(() => {
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Required',
+        description: 'Google OAuth credentials have not been configured yet. Please add your Google Client ID.',
+      });
+      return;
+    }
     const authUrl = getAuthUrl();
     if (authUrl) {
       window.location.href = authUrl;
     }
-  }, [getAuthUrl]);
+  }, [getAuthUrl, toast]);
 
   // Handle OAuth callback
   const handleCallback = useCallback(async (code: string, returnedState: string) => {
