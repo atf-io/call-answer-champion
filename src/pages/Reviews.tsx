@@ -151,10 +151,10 @@ const Reviews = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-lg font-semibold text-primary-foreground">
-                      {review.author_name.charAt(0)}
+                      {review.authorName.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{review.author_name}</h3>
+                      <h3 className="font-semibold">{review.authorName}</h3>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center">
                           {[...Array(5)].map((_, i) => (
@@ -167,7 +167,7 @@ const Reviews = () => {
                           ))}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          • {formatDate(review.review_date)}
+                          • {formatDate(review.reviewDate)}
                         </span>
                       </div>
                     </div>
@@ -181,12 +181,12 @@ const Reviews = () => {
                   </span>
                 </div>
 
-                <p className="text-foreground mb-4">{review.review_text || "No review text"}</p>
+                <p className="text-foreground mb-4">{review.reviewText || "No review text"}</p>
 
-                {review.response_text ? (
+                {review.responseText ? (
                   <div className="bg-muted/30 rounded-xl p-4 border-l-2 border-primary">
                     <p className="text-xs text-muted-foreground mb-2">Your Response:</p>
-                    <p className="text-sm text-foreground">{review.response_text}</p>
+                    <p className="text-sm text-foreground">{review.responseText}</p>
                   </div>
                 ) : respondingTo === review.id ? (
                   <div className="space-y-3">
