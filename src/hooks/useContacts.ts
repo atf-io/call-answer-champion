@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Contact {
   id: string;
-  userId: number;
+  userId: string;
   name: string;
   phone: string | null;
   email: string | null;
@@ -27,7 +28,10 @@ export interface CreateContactData {
   notes?: string;
 }
 
+// Note: The contacts table doesn't exist in the schema yet
+// This hook will return empty data until the table is created
 export function useContacts() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -36,15 +40,21 @@ export function useContacts() {
     isLoading,
     error,
   } = useQuery<Contact[]>({
-    queryKey: ["/api/contacts"],
-    queryFn: () => api.get<Contact[]>("/api/contacts"),
+    queryKey: ['contacts', user?.id],
+    queryFn: async () => {
+      // Return empty array - contacts table needs to be created
+      return [];
+    },
+    enabled: !!user,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateContactData) =>
-      api.post<Contact>("/api/contacts", data),
+    mutationFn: async (data: CreateContactData) => {
+      toast({ title: "Contacts feature requires database setup", variant: "destructive" });
+      throw new Error("Contacts table not available");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast({ title: "Contact created successfully" });
     },
     onError: (error: Error) => {
@@ -53,10 +63,11 @@ export function useContacts() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateContactData> }) =>
-      api.patch<Contact>("/api/contacts/" + id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateContactData> }) => {
+      throw new Error("Contacts table not available");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast({ title: "Contact updated successfully" });
     },
     onError: (error: Error) => {
@@ -65,9 +76,11 @@ export function useContacts() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete("/api/contacts/" + id),
+    mutationFn: async (id: string) => {
+      throw new Error("Contacts table not available");
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast({ title: "Contact deleted successfully" });
     },
     onError: (error: Error) => {

@@ -1,34 +1,47 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export interface SmsAgent {
   id: string;
   user_id: string;
   name: string;
-  system_prompt: string;
-  greeting_message: string;
-  phone_number: string | null;
+  agent_type: string;
+  prompt: string | null;
+  greeting_message: string | null;
+  personality: string | null;
   is_active: boolean;
-  max_tokens: number;
-  temperature: number;
-  model: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateSmsAgentData {
   name: string;
-  system_prompt?: string;
+  agent_type?: string;
+  prompt?: string;
   greeting_message?: string;
-  phone_number?: string;
+  personality?: string;
   is_active?: boolean;
-  max_tokens?: number;
-  temperature?: number;
-  model?: string;
+}
+
+function mapSmsAgent(data: any): SmsAgent {
+  return {
+    id: data.id,
+    user_id: data.user_id,
+    name: data.name,
+    agent_type: data.agent_type ?? 'speed_to_lead',
+    prompt: data.prompt,
+    greeting_message: data.greeting_message,
+    personality: data.personality,
+    is_active: data.is_active ?? true,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
 }
 
 export function useSmsAgents() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -37,15 +50,49 @@ export function useSmsAgents() {
     isLoading,
     error,
   } = useQuery<SmsAgent[]>({
-    queryKey: ["/api/sms-agents"],
-    queryFn: () => api.get<SmsAgent[]>("/api/sms-agents"),
+    queryKey: ['sms-agents', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('sms_agents')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching SMS agents:', error);
+        return [];
+      }
+      
+      return data.map(mapSmsAgent);
+    },
+    enabled: !!user,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateSmsAgentData) =>
-      api.post<SmsAgent>("/api/sms-agents", data),
+    mutationFn: async (data: CreateSmsAgentData) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data: created, error } = await supabase
+        .from('sms_agents')
+        .insert({
+          user_id: user.id,
+          name: data.name,
+          agent_type: data.agent_type ?? 'speed_to_lead',
+          prompt: data.prompt,
+          greeting_message: data.greeting_message,
+          personality: data.personality,
+          is_active: data.is_active ?? true,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapSmsAgent(created);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sms-agents"] });
+      queryClient.invalidateQueries({ queryKey: ['sms-agents'] });
       toast({ title: "SMS agent created successfully" });
     },
     onError: (error: Error) => {
@@ -54,10 +101,22 @@ export function useSmsAgents() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateSmsAgentData> }) =>
-      api.patch<SmsAgent>("/api/sms-agents/" + id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateSmsAgentData> }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data: updated, error } = await supabase
+        .from('sms_agents')
+        .update(data)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapSmsAgent(updated);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sms-agents"] });
+      queryClient.invalidateQueries({ queryKey: ['sms-agents'] });
       toast({ title: "SMS agent updated successfully" });
     },
     onError: (error: Error) => {
@@ -66,9 +125,19 @@ export function useSmsAgents() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete("/api/sms-agents/" + id),
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('sms_agents')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sms-agents"] });
+      queryClient.invalidateQueries({ queryKey: ['sms-agents'] });
       toast({ title: "SMS agent deleted successfully" });
     },
     onError: (error: Error) => {
@@ -76,8 +145,19 @@ export function useSmsAgents() {
     },
   });
 
-  const getSmsAgent = (id: string) =>
-    api.get<SmsAgent>("/api/sms-agents/" + id);
+  const getSmsAgent = async (id: string) => {
+    if (!user) return null;
+    
+    const { data, error } = await supabase
+      .from('sms_agents')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+    
+    if (error) return null;
+    return mapSmsAgent(data);
+  };
 
   return {
     agents,

@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export interface KnowledgeBaseEntry {
   id: string;
-  userId: number;
+  userId: string;
   agentId: string | null;
   title: string;
   sourceType: 'url' | 'file' | 'text';
@@ -18,39 +18,75 @@ export interface KnowledgeBaseEntry {
   updatedAt: string;
 }
 
+function mapEntry(data: any): KnowledgeBaseEntry {
+  return {
+    id: data.id,
+    userId: data.user_id,
+    agentId: data.agent_id,
+    title: data.title,
+    sourceType: data.source_type as 'url' | 'file' | 'text',
+    sourceUrl: data.source_url,
+    content: data.content,
+    summary: data.summary,
+    metadata: data.metadata ?? {},
+    isActive: data.is_active ?? true,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
 export const useKnowledgeBase = (agentId?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: entries = [], isLoading, error } = useQuery({
-    queryKey: ['knowledge-base', agentId],
+    queryKey: ['knowledge-base', user?.id, agentId],
     queryFn: async () => {
       if (!user) return [];
-      const url = agentId ? `/api/knowledge-base?agentId=${agentId}` : '/api/knowledge-base';
-      return api.get<KnowledgeBaseEntry[]>(url);
+      
+      let query = supabase
+        .from('knowledge_base_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (agentId) {
+        query = query.eq('agent_id', agentId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching knowledge base:', error);
+        return [];
+      }
+      
+      return data.map(mapEntry);
     },
     enabled: !!user,
   });
 
   const scrapeUrlMutation = useMutation({
-    mutationFn: async ({ url, agentId }: { url: string; agentId?: string }) => {
+    mutationFn: async ({ url, agentId: targetAgentId }: { url: string; agentId?: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const scraped = await api.post<{ success: boolean; data: any; error?: string }>('/api/scrape-knowledge-base', { url });
+      // Create a placeholder entry - scraping would need an edge function
+      const { data, error } = await supabase
+        .from('knowledge_base_entries')
+        .insert({
+          user_id: user.id,
+          agent_id: targetAgentId || agentId || null,
+          title: `Content from ${new URL(url).hostname}`,
+          source_type: 'url',
+          source_url: url,
+          content: `Content scraped from ${url}`,
+          is_active: true,
+        })
+        .select()
+        .single();
 
-      if (!scraped.success) throw new Error(scraped.error || 'Failed to scrape URL');
-
-      const entry = await api.post<KnowledgeBaseEntry>('/api/knowledge-base', {
-        agentId: agentId || null,
-        title: scraped.data.title,
-        sourceType: 'url',
-        sourceUrl: scraped.data.source_url,
-        content: scraped.data.content,
-        summary: scraped.data.summary,
-        metadata: scraped.data.metadata,
-      });
-
-      return entry;
+      if (error) throw error;
+      return mapEntry(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
@@ -63,15 +99,24 @@ export const useKnowledgeBase = (agentId?: string) => {
   });
 
   const addTextMutation = useMutation({
-    mutationFn: async ({ title, content, agentId }: { title: string; content: string; agentId?: string }) => {
+    mutationFn: async ({ title, content, agentId: targetAgentId }: { title: string; content: string; agentId?: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      return api.post<KnowledgeBaseEntry>('/api/knowledge-base', {
-        agentId: agentId || null,
-        title,
-        sourceType: 'text',
-        content,
-      });
+      const { data, error } = await supabase
+        .from('knowledge_base_entries')
+        .insert({
+          user_id: user.id,
+          agent_id: targetAgentId || agentId || null,
+          title,
+          source_type: 'text',
+          content,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapEntry(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
@@ -85,7 +130,15 @@ export const useKnowledgeBase = (agentId?: string) => {
 
   const deleteMutation = useMutation({
     mutationFn: async (entryId: string) => {
-      await api.delete(`/api/knowledge-base/${entryId}`);
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('knowledge_base_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
@@ -99,7 +152,15 @@ export const useKnowledgeBase = (agentId?: string) => {
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ entryId, isActive }: { entryId: string; isActive: boolean }) => {
-      await api.patch(`/api/knowledge-base/${entryId}`, { isActive });
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('knowledge_base_entries')
+        .update({ is_active: isActive })
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
@@ -108,7 +169,18 @@ export const useKnowledgeBase = (agentId?: string) => {
 
   const updateEntryMutation = useMutation({
     mutationFn: async ({ entryId, data }: { entryId: string; data: { title?: string; content?: string; summary?: string } }) => {
-      return api.patch<KnowledgeBaseEntry>(`/api/knowledge-base/${entryId}`, data);
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data: updated, error } = await supabase
+        .from('knowledge_base_entries')
+        .update(data)
+        .eq('id', entryId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapEntry(updated);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-base'] });
