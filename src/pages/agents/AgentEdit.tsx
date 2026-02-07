@@ -106,6 +106,11 @@ const AgentEdit = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   const agent = agents.find(a => a.id === agentId);
+  
+  // Determine agent type - Chat agents map to Retell Chat Agent settings
+  const isChatAgent = agent?.voice_type === "Chat Agent" || agent?.voice_model === "chat" || agent?.voice_id === "chat-agent";
+  const isSpeedToLead = agent?.voice_type === "Speed to Lead" || agent?.voice_id === "sms-agent" || agent?.voice_model === "sms";
+  const isVoiceAgent = !isChatAgent && !isSpeedToLead;
 
   useEffect(() => {
     if (agent) {
@@ -194,10 +199,17 @@ const AgentEdit = () => {
     );
   }
 
+  // Determine the appropriate description based on agent type
+  const getAgentDescription = () => {
+    if (isChatAgent) return "Configure Retell AI Chat Agent settings";
+    if (isSpeedToLead) return "Configure Speed to Lead settings (mirrors Retell Chat Agent)";
+    return "Configure all Retell AI settings for this agent";
+  };
+
   return (
     <AgentLayout
       title={`Edit: ${agent.name}`}
-      description="Configure all Retell AI settings for this agent"
+      description={getAgentDescription()}
     >
       <div className="space-y-6">
         {/* Header Actions */}
@@ -207,6 +219,11 @@ const AgentEdit = () => {
             Back to Agents
           </Button>
           <div className="flex items-center gap-2">
+            {(isChatAgent || isSpeedToLead) && (
+              <Badge variant="secondary" className="gap-1">
+                {isChatAgent ? "Chat Agent" : "Speed to Lead"}
+              </Badge>
+            )}
             {agent.retell_agent_id && (
               <Badge variant="outline" className="gap-1">
                 <RefreshCw className="w-3 h-3" />
@@ -251,30 +268,32 @@ const AgentEdit = () => {
           </div>
         </div>
 
-        {/* Settings Tabs */}
-        <Tabs defaultValue="basic" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="basic" className="gap-1">
-              <Settings2 className="w-4 h-4" />
-              Basic
-            </TabsTrigger>
-            <TabsTrigger value="voice" className="gap-1">
-              <Volume2 className="w-4 h-4" />
-              Voice
-            </TabsTrigger>
-            <TabsTrigger value="behavior" className="gap-1">
-              <Mic className="w-4 h-4" />
-              Behavior
-            </TabsTrigger>
-            <TabsTrigger value="timing" className="gap-1">
-              <Clock className="w-4 h-4" />
-              Timing
-            </TabsTrigger>
-            <TabsTrigger value="call" className="gap-1">
-              <Phone className="w-4 h-4" />
-              Call
-            </TabsTrigger>
-          </TabsList>
+        {/* Settings Tabs - Different for Voice vs Chat/Speed-to-Lead agents */}
+        {isVoiceAgent ? (
+          // Voice Agent Tabs (Full Retell Voice AI settings)
+          <Tabs defaultValue="basic" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="basic" className="gap-1">
+                <Settings2 className="w-4 h-4" />
+                Basic
+              </TabsTrigger>
+              <TabsTrigger value="voice" className="gap-1">
+                <Volume2 className="w-4 h-4" />
+                Voice
+              </TabsTrigger>
+              <TabsTrigger value="behavior" className="gap-1">
+                <Mic className="w-4 h-4" />
+                Behavior
+              </TabsTrigger>
+              <TabsTrigger value="timing" className="gap-1">
+                <Clock className="w-4 h-4" />
+                Timing
+              </TabsTrigger>
+              <TabsTrigger value="call" className="gap-1">
+                <Phone className="w-4 h-4" />
+                Call
+              </TabsTrigger>
+            </TabsList>
 
           {/* Basic Tab */}
           <TabsContent value="basic">
@@ -786,6 +805,276 @@ const AgentEdit = () => {
             </Card>
           </TabsContent>
         </Tabs>
+        ) : (
+          // Chat Agent / Speed to Lead Tabs (mirrors Retell Chat Agent settings)
+          <Tabs defaultValue="basic" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="basic" className="gap-1">
+                <Settings2 className="w-4 h-4" />
+                Basic
+              </TabsTrigger>
+              <TabsTrigger value="behavior" className="gap-1">
+                <Mic className="w-4 h-4" />
+                Behavior
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="gap-1">
+                <Phone className="w-4 h-4" />
+                Advanced
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Basic Tab - Chat Agent */}
+            <TabsContent value="basic">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Settings</CardTitle>
+                  <CardDescription>
+                    Core {isChatAgent ? "Chat Agent" : "Speed to Lead"} configuration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Agent Name</Label>
+                      <Input
+                        id="name"
+                        value={formData.name || ""}
+                        onChange={(e) => handleChange({ name: e.target.value })}
+                        placeholder="Lead Qualifier Bot"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Language</Label>
+                      <Select
+                        value={formData.language || "en-US"}
+                        onValueChange={(value) => handleChange({ language: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map((lang) => (
+                            <SelectItem key={lang.id} value={lang.id}>
+                              {lang.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="personality">Agent Personality</Label>
+                    <Input
+                      id="personality"
+                      value={formData.personality || ""}
+                      onChange={(e) => handleChange({ personality: e.target.value })}
+                      placeholder="friendly and professional"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Describe how the agent should behave in conversations
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="greeting">Greeting Message</Label>
+                    <Textarea
+                      id="greeting"
+                      value={formData.greeting_message || ""}
+                      onChange={(e) => handleChange({ greeting_message: e.target.value })}
+                      placeholder="Hi! Thanks for reaching out. How can I help you today?"
+                      className="min-h-[100px]"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      The first message sent when a conversation starts
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <Label>Agent Active</Label>
+                      <p className="text-sm text-muted-foreground">Enable or disable this agent</p>
+                    </div>
+                    <Switch
+                      checked={formData.is_active || false}
+                      onCheckedChange={(checked) => handleChange({ is_active: checked })}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Behavior Tab - Chat Agent */}
+            <TabsContent value="behavior">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Behavior Settings</CardTitle>
+                  <CardDescription>Control how the agent responds and interacts</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Responsiveness</Label>
+                      <span className="text-sm text-muted-foreground">{Number(formData.responsiveness ?? 1).toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[Number(formData.responsiveness ?? 1)]}
+                      onValueChange={([value]) => handleChange({ responsiveness: value })}
+                      min={0}
+                      max={1}
+                      step={0.1}
+                    />
+                    <p className="text-xs text-muted-foreground">Higher = quicker responses, lower = more deliberate pauses</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Response Temperature</Label>
+                      <span className="text-sm text-muted-foreground">{Number(formData.voice_temperature ?? 1).toFixed(1)}</span>
+                    </div>
+                    <Slider
+                      value={[Number(formData.voice_temperature ?? 1)]}
+                      onValueChange={([value]) => handleChange({ voice_temperature: value })}
+                      min={0}
+                      max={2}
+                      step={0.1}
+                    />
+                    <p className="text-xs text-muted-foreground">Higher = more creative and varied, lower = more consistent</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Boosted Keywords</Label>
+                    <Input
+                      value={keywordsInput}
+                      onChange={(e) => {
+                        setKeywordsInput(e.target.value);
+                        setHasChanges(true);
+                      }}
+                      placeholder="e.g., HVAC, plumbing, emergency, appointment"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Comma-separated keywords to boost recognition accuracy
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <Label>Reminder Trigger (seconds)</Label>
+                        <span className="text-sm text-muted-foreground">{msToSeconds(formData.reminder_trigger_ms)}s</span>
+                      </div>
+                      <Slider
+                        value={[msToSeconds(formData.reminder_trigger_ms)]}
+                        onValueChange={([value]) => handleChange({ reminder_trigger_ms: secondsToMs(value) })}
+                        min={5}
+                        max={30}
+                        step={1}
+                      />
+                      <p className="text-xs text-muted-foreground">Time before agent prompts for response</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <Label>Max Reminder Count</Label>
+                        <span className="text-sm text-muted-foreground">{formData.reminder_max_count ?? 2}</span>
+                      </div>
+                      <Slider
+                        value={[formData.reminder_max_count ?? 2]}
+                        onValueChange={([value]) => handleChange({ reminder_max_count: value })}
+                        min={0}
+                        max={5}
+                        step={1}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Advanced Tab - Chat Agent */}
+            <TabsContent value="advanced">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Advanced Settings</CardTitle>
+                  <CardDescription>Session timing and agent metadata</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Begin Message Delay (seconds)</Label>
+                      <span className="text-sm text-muted-foreground">{msToSeconds(formData.begin_message_delay_ms)}s</span>
+                    </div>
+                    <Slider
+                      value={[msToSeconds(formData.begin_message_delay_ms)]}
+                      onValueChange={([value]) => handleChange({ begin_message_delay_ms: secondsToMs(value) })}
+                      min={0}
+                      max={5}
+                      step={0.5}
+                    />
+                    <p className="text-xs text-muted-foreground">Delay before agent sends the greeting</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>End Session After Silence (minutes)</Label>
+                      <span className="text-sm text-muted-foreground">{msToMinutes(formData.end_call_after_silence_ms)} min</span>
+                    </div>
+                    <Slider
+                      value={[msToMinutes(formData.end_call_after_silence_ms)]}
+                      onValueChange={([value]) => handleChange({ end_call_after_silence_ms: minutesToMs(value) })}
+                      min={1}
+                      max={30}
+                      step={1}
+                    />
+                    <p className="text-xs text-muted-foreground">End conversation after this much inactivity</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <Label>Max Session Duration (minutes)</Label>
+                      <span className="text-sm text-muted-foreground">{msToMinutes(formData.max_call_duration_ms)} min</span>
+                    </div>
+                    <Slider
+                      value={[msToMinutes(formData.max_call_duration_ms)]}
+                      onValueChange={([value]) => handleChange({ max_call_duration_ms: minutesToMs(value) })}
+                      min={5}
+                      max={120}
+                      step={5}
+                    />
+                    <p className="text-xs text-muted-foreground">Maximum time for a single conversation</p>
+                  </div>
+
+                  {/* Agent Stats */}
+                  <div className="mt-8 pt-6 border-t">
+                    <h3 className="text-lg font-semibold mb-4">Agent Statistics</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-4 rounded-lg bg-muted/50 text-center">
+                        <p className="text-2xl font-bold">{agent.total_calls}</p>
+                        <p className="text-sm text-muted-foreground">Total Sessions</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/50 text-center">
+                        <p className="text-2xl font-bold">{Math.floor((agent.avg_duration_seconds || 0) / 60)}:{String((agent.avg_duration_seconds || 0) % 60).padStart(2, '0')}</p>
+                        <p className="text-sm text-muted-foreground">Avg Duration</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/50 text-center">
+                        <p className="text-2xl font-bold">{agent.satisfaction_score}%</p>
+                        <p className="text-sm text-muted-foreground">Satisfaction</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {agent.retell_agent_id && (
+                    <div className="p-4 rounded-lg bg-muted/50">
+                      <Label className="text-muted-foreground">Retell Agent ID</Label>
+                      <p className="font-mono text-sm mt-1">{agent.retell_agent_id}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </AgentLayout>
   );
