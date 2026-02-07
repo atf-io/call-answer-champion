@@ -10,14 +10,17 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ].join(' ');
 
-// The client ID should be set as an environment variable
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
-
 export interface GoogleBusinessAuthState {
   isConnected: boolean;
   isLoading: boolean;
   businessName: string | null;
   lastSyncedAt: string | null;
+}
+
+interface OAuthConfig {
+  configured: boolean;
+  clientId?: string;
+  message?: string;
 }
 
 export function useGoogleBusinessAuth() {
@@ -29,6 +32,21 @@ export function useGoogleBusinessAuth() {
     businessName: null,
     lastSyncedAt: null,
   });
+  const [oauthConfig, setOAuthConfig] = useState<OAuthConfig | null>(null);
+
+  // Fetch OAuth config from backend
+  const fetchOAuthConfig = useCallback(async () => {
+    try {
+      const response = await supabase.functions.invoke('google-oauth-config');
+      if (response.error) {
+        console.error('Error fetching OAuth config:', response.error);
+        return;
+      }
+      setOAuthConfig(response.data);
+    } catch (error) {
+      console.error('Error fetching OAuth config:', error);
+    }
+  }, []);
 
   // Check connection status on mount
   const checkConnection = useCallback(async () => {
@@ -61,16 +79,17 @@ export function useGoogleBusinessAuth() {
   }, [user]);
 
   useEffect(() => {
+    fetchOAuthConfig();
     checkConnection();
-  }, [checkConnection]);
+  }, [fetchOAuthConfig, checkConnection]);
 
   // Generate OAuth authorization URL
   const getAuthUrl = useCallback(() => {
-    if (!GOOGLE_CLIENT_ID) {
+    if (!oauthConfig?.configured || !oauthConfig?.clientId) {
       toast({
         variant: 'destructive',
         title: 'Configuration Error',
-        description: 'Google OAuth is not configured. Please contact support.',
+        description: oauthConfig?.message || 'Google OAuth is not configured. Please contact support.',
       });
       return null;
     }
@@ -78,29 +97,29 @@ export function useGoogleBusinessAuth() {
     const redirectUri = `${window.location.origin}/auth/google/callback`;
     
     // Generate state for CSRF protection
-    const state = crypto.randomUUID().replace(/-/g, '');
-    sessionStorage.setItem('google_oauth_state', state);
+    const csrfState = crypto.randomUUID().replace(/-/g, '');
+    sessionStorage.setItem('google_oauth_state', csrfState);
 
     const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: oauthConfig.clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: GOOGLE_SCOPES,
-      state: state,
+      state: csrfState,
       access_type: 'offline',
       prompt: 'consent',
     });
 
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-  }, [toast]);
+  }, [oauthConfig, toast]);
 
   // Initiate Google OAuth flow
   const connectGoogle = useCallback(() => {
-    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    if (!oauthConfig?.configured || !oauthConfig?.clientId) {
       toast({
         variant: 'destructive',
         title: 'Configuration Required',
-        description: 'Google OAuth credentials have not been configured yet. Please add your Google Client ID.',
+        description: oauthConfig?.message || 'Google OAuth credentials have not been configured yet.',
       });
       return;
     }
@@ -108,7 +127,7 @@ export function useGoogleBusinessAuth() {
     if (authUrl) {
       window.location.href = authUrl;
     }
-  }, [getAuthUrl, toast]);
+  }, [oauthConfig, getAuthUrl, toast]);
 
   // Handle OAuth callback
   const handleCallback = useCallback(async (code: string, returnedState: string) => {
