@@ -37,11 +37,13 @@ export function useGoogleBusinessAuth() {
   // Fetch OAuth config from backend
   const fetchOAuthConfig = useCallback(async () => {
     try {
+      console.log('Fetching Google OAuth config from backend...');
       const response = await supabase.functions.invoke('google-oauth-config');
       if (response.error) {
         console.error('Error fetching OAuth config:', response.error);
         return;
       }
+      console.log('OAuth config received:', response.data);
       setOAuthConfig(response.data);
     } catch (error) {
       console.error('Error fetching OAuth config:', error);
@@ -115,6 +117,17 @@ export function useGoogleBusinessAuth() {
 
   // Initiate Google OAuth flow
   const connectGoogle = useCallback(() => {
+    console.log('Connect Google clicked, oauthConfig:', oauthConfig);
+    
+    if (oauthConfig === null) {
+      // Config still loading
+      toast({
+        title: 'Please Wait',
+        description: 'Loading Google configuration, please try again in a moment.',
+      });
+      return;
+    }
+    
     if (!oauthConfig?.configured || !oauthConfig?.clientId) {
       toast({
         variant: 'destructive',
@@ -123,7 +136,9 @@ export function useGoogleBusinessAuth() {
       });
       return;
     }
+    
     const authUrl = getAuthUrl();
+    console.log('Redirecting to OAuth URL:', authUrl);
     if (authUrl) {
       window.location.href = authUrl;
     }
