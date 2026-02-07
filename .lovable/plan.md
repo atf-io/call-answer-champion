@@ -1,131 +1,153 @@
 
-# Plan: Automated SMS Campaign Enrollment and AI Agent Response System
+# Testing Plan: SMS Campaign Automation System
 
-## Status: ✅ Phase 1-2 Complete
+## Current State Summary
 
----
+After thorough investigation, I've tested both critical workflows and identified key findings:
 
-## Completed Tasks
+### What's Working
+1. **Lead Webhook (`lead-webhook`)** - Contact creation and conversation linking works correctly
+   - Tested with: `POST /lead-webhook` with Angi source
+   - Result: Contact created (`a82223cc-...`), conversation created (`a0ed489e-...`)
+   - Issue: Campaign enrollment requires campaigns to be **active** (`is_active: true`)
 
-### ✅ Phase 1: Database Updates
-- Created `contacts` table with RLS policies
-- Added `contact_id` column to `sms_conversations`
-- Enabled `pg_cron` and `pg_net` extensions
-- Created indexes for performance
+2. **SMS Inbound (`sms-inbound`)** - Message recording and response flow works
+   - Tested with: `POST /sms-inbound` simulating customer reply
+   - Result: Message recorded, agent response generated
+   - Issue: AI response failing due to incorrect API endpoint
 
-### ✅ Phase 2: Edge Functions
-- **lead-webhook**: Handles incoming leads, creates contacts, enrolls in campaigns
-- **sms-processor**: Processes scheduled campaign messages
-- **sms-inbound**: Handles inbound SMS, pauses campaigns, triggers AI agent
+### Issues Found
 
-### ✅ Phase 5: Frontend Updates
-- Migrated `useSmsCampaigns` hook to direct Supabase queries
-- Migrated `useContacts` hook to direct Supabase queries
-- Fixed type compatibility for CampaignStep (delay_days/delay_hours)
-
----
-
-## Remaining Tasks
-
-### 🔲 Phase 3: Retell SMS Integration
-- Integrate with Retell API for actual SMS sending
-- The edge functions currently log messages but don't send via Retell yet
-- Need to research Retell's SMS API endpoints
-
-### 🔲 Phase 4: Scheduled Processing
-- Set up pg_cron job to call sms-processor every 5 minutes
-- Requires running SQL insert (not migration) to create cron job
-
-### 🔲 Additional Frontend Updates
-- Add lead_sources multi-select UI to Campaigns page
-- Add trigger_type selection to Campaigns page
-- Enhance Contacts page with enrollment status
-- Build Chat History page for viewing conversations
+| Issue | Root Cause | Status |
+|-------|------------|--------|
+| No campaign enrollments | Campaigns have `is_active: false` | Configuration issue |
+| AI fallback response | Wrong Lovable AI endpoint URL | Code fix needed |
 
 ---
 
-## Architecture
+## Proposed Testing Strategy
 
+### Phase 1: Fix AI Integration
+
+The `sms-inbound` function uses an incorrect endpoint:
+
+**Current (broken):**
 ```text
-+----------------+     +------------------+     +-------------------+
-|  Lead Webhook  | --> | lead-webhook     | --> | Create Contact +  |
-|  (Angi, etc.)  |     | Edge Function    |     | sms_conversation  |
-+----------------+     +------------------+     +-------------------+
-                                                        |
-                                                        v
-                              +---------------------------+
-                              | Enroll in matching        |
-                              | campaigns (lead_sources)  |
-                              +---------------------------+
-                                        |
-                                        v
-                        +-------------------------------+
-                        | Send first campaign message   |
-                        | (via sms-processor function)  |
-                        +-------------------------------+
-
-+------------------+     +------------------+     +-------------------+
-| Lead Responds    | --> | sms-inbound      | --> | Deploy SMS Agent  |
-| (Retell webhook) |     | Edge Function    |     | for AI response   |
-+------------------+     +------------------+     +-------------------+
-                                                        |
-                                                        v
-                              +---------------------------+
-                              | Call Lovable AI to        |
-                              | generate agent response   |
-                              +---------------------------+
-
-+-----------------+     +------------------+
-| pg_cron (5 min) | --> | sms-processor    |
-+-----------------+     | Edge Function    |
-                        +------------------+
+https://ai.lovable.dev/api/v2/completions
 ```
+
+**Correct endpoint:**
+```text
+https://ai.gateway.lovable.dev/v1/chat/completions
+```
+
+This fix will enable the AI agent to generate dynamic responses.
 
 ---
 
-## Webhook Usage
+### Phase 2: End-to-End Test Procedure
 
-### Lead Webhook Endpoint
-```
-POST https://zscmunbouhmwouiczkgk.supabase.co/functions/v1/lead-webhook
-```
+Once the code fix is applied, here's how to test the full flow:
 
-**Headers:**
-- `x-webhook-secret`: User's webhook secret from user_settings
-- `Content-Type: application/json`
+#### Test 1: Contact Creation + Campaign Enrollment
 
-**Payload:**
+**Prerequisites:**
+- Activate a campaign with lead sources set (e.g., "angi")
+- Ensure campaign has at least one step with delay = 0 for immediate message
+
+**Test Steps:**
+1. Send POST to `/lead-webhook`:
 ```json
 {
   "source": "angi",
-  "phone": "+15551234567",
-  "name": "John Smith",
-  "email": "john@example.com",
-  "service": "Plumbing Repair",
-  "address": "123 Main St",
-  "notes": "Water heater issue"
+  "phone": "5559876543",
+  "name": "Jane Doe",
+  "service": "Plumbing Repair"
 }
 ```
+Headers: `x-webhook-secret: test-secret-123`
 
-### SMS Inbound Endpoint
-```
-POST https://zscmunbouhmwouiczkgk.supabase.co/functions/v1/sms-inbound
-```
-
-**Payload (from Retell/SMS provider):**
-```json
-{
-  "from": "+15551234567",
-  "to": "+15559876543",
-  "body": "Yes, I'd like to schedule an appointment"
-}
-```
+2. Verify in database:
+   - Contact created in `contacts` table
+   - Conversation created in `sms_conversations`
+   - Enrollment created in `sms_campaign_enrollments`
+   - Initial message sent in `sms_messages`
 
 ---
 
-## Template Variables
-- `{{first_name}}` - Lead's first name
-- `{{business_name}}` - User's business name
-- `{{service_category}}` - Requested service
-- `{{agent_name}}` - SMS agent name
-- `{{lead_source}}` - Where the lead came from
+#### Test 2: Inbound SMS + AI Agent Response
+
+**Test Steps:**
+1. Send POST to `/sms-inbound`:
+```json
+{
+  "from": "+15559876543",
+  "to": "+18001234567",
+  "body": "What are your hours?"
+}
+```
+
+2. Verify:
+   - Inbound message recorded in `sms_messages`
+   - AI-generated response recorded
+   - Campaign enrollment paused (if active)
+
+---
+
+#### Test 3: Campaign Step Progression
+
+**Test Steps:**
+1. Manually call `/sms-processor`
+2. Verify enrollments with `next_message_at <= now()` are processed
+3. Check message delivery and step advancement
+
+---
+
+## Technical Changes Required
+
+### 1. Update sms-inbound AI endpoint
+
+```text
+File: supabase/functions/sms-inbound/index.ts
+Line 46: Change URL from 'https://ai.lovable.dev/api/v2/completions'
+         to 'https://ai.gateway.lovable.dev/v1/chat/completions'
+```
+
+### 2. Add UI to manage campaign active status
+Ensure the Campaigns page allows toggling `is_active` so campaigns can be activated for testing
+
+### 3. Add UI to display/manage webhook secret
+Users need to see their webhook secret in Settings to configure external integrations
+
+---
+
+## Verification Checklist
+
+After implementation:
+
+- [ ] AI responses generated dynamically (not fallback)
+- [ ] Contacts created via webhook appear in Contacts page
+- [ ] Campaign enrollments visible in database
+- [ ] SMS messages logged in conversation history
+- [ ] Campaign pauses when customer replies
+- [ ] Escalation keywords trigger proper handoff
+
+---
+
+## Database Queries for Manual Verification
+
+```sql
+-- Check recent contacts
+SELECT * FROM contacts ORDER BY created_at DESC LIMIT 5;
+
+-- Check enrollments
+SELECT e.*, c.name as campaign_name 
+FROM sms_campaign_enrollments e
+JOIN sms_campaigns c ON e.campaign_id = c.id
+ORDER BY e.created_at DESC;
+
+-- Check messages in a conversation
+SELECT * FROM sms_messages 
+WHERE conversation_id = 'your-conversation-id'
+ORDER BY created_at;
+```
