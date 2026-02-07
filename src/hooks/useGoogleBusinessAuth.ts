@@ -115,12 +115,11 @@ export function useGoogleBusinessAuth() {
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }, [oauthConfig, toast]);
 
-  // Initiate Google OAuth flow
+  // Initiate Google OAuth flow using popup to prevent preview issues
   const connectGoogle = useCallback(() => {
     console.log('Connect Google clicked, oauthConfig:', oauthConfig);
     
     if (oauthConfig === null) {
-      // Config still loading
       toast({
         title: 'Please Wait',
         description: 'Loading Google configuration, please try again in a moment.',
@@ -138,9 +137,38 @@ export function useGoogleBusinessAuth() {
     }
     
     const authUrl = getAuthUrl();
-    console.log('Redirecting to OAuth URL:', authUrl);
+    console.log('Opening OAuth in popup:', authUrl);
+    
     if (authUrl) {
-      window.location.href = authUrl;
+      // Calculate popup dimensions and position (centered)
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      // Open OAuth in popup window to prevent preview iframe issues
+      const popup = window.open(
+        authUrl,
+        'google-oauth-popup',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+      
+      if (!popup || popup.closed) {
+        // Popup blocked - fall back to redirect
+        toast({
+          title: 'Popup Blocked',
+          description: 'Please allow popups for this site, or we will redirect you.',
+        });
+        // Use redirect as fallback after a short delay
+        setTimeout(() => {
+          window.location.href = authUrl;
+        }, 2000);
+      } else {
+        toast({
+          title: 'Google Sign-In',
+          description: 'Complete the sign-in in the popup window.',
+        });
+      }
     }
   }, [oauthConfig, getAuthUrl, toast]);
 
