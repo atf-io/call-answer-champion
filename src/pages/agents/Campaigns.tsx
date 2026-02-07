@@ -68,6 +68,10 @@ const formatDelay = (totalMinutes: number) => {
   return parts.join(" ");
 };
 
+// Convert step delay_days/delay_hours to total minutes
+const stepToMinutes = (step: CampaignStep) => 
+  (step.delay_days || 0) * 1440 + (step.delay_hours || 0) * 60;
+
 interface CampaignPreset {
   name: string;
   description: string;
@@ -321,7 +325,7 @@ const Campaigns = () => {
           await addStep({
             campaign_id: cloned.id,
             step_order: step.step_order,
-            delay_minutes: step.delay_minutes,
+            delay_minutes: stepToMinutes(step),
             message_template: step.message_template,
           });
         }
@@ -350,7 +354,7 @@ const Campaigns = () => {
 
   const startEditStep = (step: CampaignStep) => {
     setEditingStepId(step.id);
-    const dhm = minutesToDhm(step.delay_minutes);
+    const dhm = minutesToDhm(stepToMinutes(step));
     setEditDelayDays(dhm.days);
     setEditDelayHours(dhm.hours);
     setEditDelayMinutes(dhm.minutes);
@@ -636,7 +640,7 @@ const Campaigns = () => {
                                     </span>
                                     <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid={`text-step-delay-${step.id}`}>
                                       <Clock className="w-3 h-3" />
-                                      {formatDelay(step.delay_minutes)} delay
+                                      {formatDelay(stepToMinutes(step))} delay
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-1">

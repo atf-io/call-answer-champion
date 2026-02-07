@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.retell-sync]
 verify_jwt = false
+
+[functions.lead-webhook]
+verify_jwt = false
+
+[functions.sms-processor]
+verify_jwt = false
+
+[functions.sms-inbound]
+verify_jwt = false

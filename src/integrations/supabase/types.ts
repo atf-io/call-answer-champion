@@ -296,6 +296,57 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_contacted_at: string | null
+          name: string
+          notes: string | null
+          phone: string
+          service_requested: string | null
+          source: string
+          status: string
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          service_requested?: string | null
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          service_requested?: string | null
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       google_integrations: {
         Row: {
           business_name: string
@@ -864,6 +915,7 @@ export type Database = {
           address_collected: string | null
           appointment_date: string | null
           appointment_scheduled: boolean | null
+          contact_id: string | null
           conversion_status: string | null
           created_at: string
           ended_at: string | null
@@ -890,6 +942,7 @@ export type Database = {
           address_collected?: string | null
           appointment_date?: string | null
           appointment_scheduled?: boolean | null
+          contact_id?: string | null
           conversion_status?: string | null
           created_at?: string
           ended_at?: string | null
@@ -916,6 +969,7 @@ export type Database = {
           address_collected?: string | null
           appointment_date?: string | null
           appointment_scheduled?: boolean | null
+          contact_id?: string | null
           conversion_status?: string | null
           created_at?: string
           ended_at?: string | null
@@ -939,6 +993,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sms_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sms_conversations_sms_agent_id_fkey"
             columns: ["sms_agent_id"]

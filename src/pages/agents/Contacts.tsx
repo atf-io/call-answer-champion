@@ -121,7 +121,7 @@ const Contacts = () => {
         (c) => c.status.toLowerCase() !== "converted"
       ).length,
       thisWeek: contacts.filter(
-        (c) => new Date(c.createdAt) >= weekAgo
+        (c) => new Date(c.created_at) >= weekAgo
       ).length,
       converted: contacts.filter(
         (c) => c.status.toLowerCase() === "converted"
@@ -304,7 +304,7 @@ const Contacts = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(contact.lastContactedAt)}
+                        {formatDate(contact.last_contacted_at)}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -364,7 +364,7 @@ const Contacts = () => {
                     {selectedContact.status}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    Last contacted {formatDate(selectedContact.lastContactedAt)}
+                    Last contacted {formatDate(selectedContact.last_contacted_at)}
                   </span>
                 </div>
 
