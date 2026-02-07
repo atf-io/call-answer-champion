@@ -4,6 +4,7 @@ import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Bot, Zap, Star, Phone, Clock, TrendingUp, Activity, CircleDot, Settings, RefreshCw, Loader2, History, MessageSquare } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { formatDistanceToNow } from "date-fns";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
@@ -161,109 +162,345 @@ const AgentsList = () => {
             ))}
           </div>
         ) : agents.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h3 className="text-lg font-semibold">Your Agents</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent) => {
-                const isLive = isAgentLive(agent.retell_agent_id);
-                const isChatAgent = agent.voice_type === "Chat Agent" || agent.voice_model === "chat" || agent.voice_id === "chat-agent";
-                const isSmsAgent = agent.voice_type === "Speed to Lead" || agent.voice_id === "sms-agent" || agent.voice_model === "sms";
-                const AgentIcon = isChatAgent ? MessageSquare : Bot;
-                const gradientColor = isChatAgent 
-                  ? "from-blue-500 to-cyan-500" 
-                  : isSmsAgent 
-                    ? "from-orange-500 to-amber-500" 
-                    : "from-primary to-primary/80";
-                const agentTypeLabel = isChatAgent ? "Chat Agent" : isSmsAgent ? "SMS Agent" : "Voice AI";
-                return (
-                  <Card key={agent.id} className={`relative overflow-hidden ${isLive ? "ring-2 ring-green-500" : ""}`}>
-                    {isLive && (
-                      <div className="absolute top-2 right-2">
-                        <Badge className="bg-green-500 text-white gap-1">
-                          <CircleDot className="w-3 h-3 animate-pulse" />
-                          Live
-                        </Badge>
-                      </div>
-                    )}
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradientColor} flex items-center justify-center`}>
-                            <AgentIcon className="w-6 h-6 text-white" />
-                          </div>
-                          <Badge variant="secondary" className="text-xs" data-testid={`badge-agent-type-${agent.id}`}>
-                            {agentTypeLabel}
-                          </Badge>
-                        </div>
-                        <Switch
-                          checked={agent.is_active}
-                          onCheckedChange={(checked) => toggleAgentStatus(agent.id, checked)}
-                        />
-                      </div>
-                      <CardTitle className="text-lg mt-2">{agent.name}</CardTitle>
-                      <CardDescription>
-                        {agent.personality} • {agent.voice_type}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="p-2 rounded-lg bg-muted/50">
-                          <Phone className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                          <p className="text-lg font-bold">{agent.total_calls}</p>
-                          <p className="text-xs text-muted-foreground">Calls</p>
-                        </div>
-                        <div className="p-2 rounded-lg bg-muted/50">
-                          <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                          <p className="text-lg font-bold">{formatDuration(agent.avg_duration_seconds)}</p>
-                          <p className="text-xs text-muted-foreground">Avg</p>
-                        </div>
-                        <div className="p-2 rounded-lg bg-muted/50">
-                          <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                          <p className="text-lg font-bold">{agent.satisfaction_score}%</p>
-                          <p className="text-xs text-muted-foreground">Happy</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1"
-                          onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
-                        >
-                          <Settings className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleSyncToRetell(agent.id)}
-                          disabled={syncingAgentId === agent.id}
-                        >
-                          {syncingAgentId === agent.id ? (
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-4 h-4 mr-1" />
+            
+            {/* Chat Agents Section */}
+            {(() => {
+              const chatAgents = agents.filter(a => 
+                a.voice_type === "Chat Agent" || a.voice_model === "chat" || a.voice_id === "chat-agent"
+              );
+              if (chatAgents.length === 0) return null;
+              return (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Chat Agents</h4>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {chatAgents.map((agent) => {
+                      const isLive = isAgentLive(agent.retell_agent_id);
+                      return (
+                        <Card key={agent.id} className={`relative overflow-hidden ${isLive ? "ring-2 ring-green-500" : ""}`}>
+                          {isLive && (
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-green-500 text-white gap-1">
+                                <CircleDot className="w-3 h-3 animate-pulse" />
+                                Live
+                              </Badge>
+                            </div>
                           )}
-                          Sync
-                        </Button>
-                      </div>
-                      {agent.retell_agent_id && (
-                        <p className="text-xs text-muted-foreground mt-2 truncate">
-                          Retell ID: {agent.retell_agent_id}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-                        <History className="w-3 h-3" />
-                        <span>
-                          Synced {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                                  <MessageSquare className="w-6 h-6 text-white" />
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  Chat Agent
+                                </Badge>
+                              </div>
+                              <Switch
+                                checked={agent.is_active}
+                                onCheckedChange={(checked) => toggleAgentStatus(agent.id, checked)}
+                              />
+                            </div>
+                            <CardTitle className="text-lg mt-2">{agent.name}</CardTitle>
+                            <CardDescription>
+                              {agent.voice_type}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <Phone className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{agent.total_calls}</p>
+                                <p className="text-xs text-muted-foreground">Calls</p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{formatDuration(agent.avg_duration_seconds)}</p>
+                                <p className="text-xs text-muted-foreground">Avg</p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{agent.satisfaction_score}%</p>
+                                <p className="text-xs text-muted-foreground">Happy</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1"
+                                onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
+                              >
+                                <Settings className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => handleSyncToRetell(agent.id)}
+                                disabled={syncingAgentId === agent.id}
+                              >
+                                {syncingAgentId === agent.id ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4 mr-1" />
+                                )}
+                                Sync
+                              </Button>
+                            </div>
+                            {agent.retell_agent_id && (
+                              <p className="text-xs text-muted-foreground mt-2 truncate">
+                                Retell ID: {agent.retell_agent_id}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+                              <History className="w-3 h-3" />
+                              <span>
+                                Synced {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Divider between sections */}
+            {(() => {
+              const chatAgents = agents.filter(a => 
+                a.voice_type === "Chat Agent" || a.voice_model === "chat" || a.voice_id === "chat-agent"
+              );
+              const voiceAgents = agents.filter(a => 
+                !(a.voice_type === "Chat Agent" || a.voice_model === "chat" || a.voice_id === "chat-agent") &&
+                !(a.voice_type === "Speed to Lead" || a.voice_id === "sms-agent" || a.voice_model === "sms")
+              );
+              if (chatAgents.length > 0 && voiceAgents.length > 0) {
+                return <Separator className="my-4" />;
+              }
+              return null;
+            })()}
+
+            {/* Voice Agents Section */}
+            {(() => {
+              const voiceAgents = agents.filter(a => 
+                !(a.voice_type === "Chat Agent" || a.voice_model === "chat" || a.voice_id === "chat-agent") &&
+                !(a.voice_type === "Speed to Lead" || a.voice_id === "sms-agent" || a.voice_model === "sms")
+              );
+              if (voiceAgents.length === 0) return null;
+              return (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Voice Agents</h4>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {voiceAgents.map((agent) => {
+                      const isLive = isAgentLive(agent.retell_agent_id);
+                      return (
+                        <Card key={agent.id} className={`relative overflow-hidden ${isLive ? "ring-2 ring-green-500" : ""}`}>
+                          {isLive && (
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-green-500 text-white gap-1">
+                                <CircleDot className="w-3 h-3 animate-pulse" />
+                                Live
+                              </Badge>
+                            </div>
+                          )}
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                                  <Bot className="w-6 h-6 text-white" />
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  Voice AI
+                                </Badge>
+                              </div>
+                              <Switch
+                                checked={agent.is_active}
+                                onCheckedChange={(checked) => toggleAgentStatus(agent.id, checked)}
+                              />
+                            </div>
+                            <CardTitle className="text-lg mt-2">{agent.name}</CardTitle>
+                            <CardDescription>
+                              {agent.voice_type}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <Phone className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{agent.total_calls}</p>
+                                <p className="text-xs text-muted-foreground">Calls</p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{formatDuration(agent.avg_duration_seconds)}</p>
+                                <p className="text-xs text-muted-foreground">Avg</p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-muted/50">
+                                <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                <p className="text-lg font-bold">{agent.satisfaction_score}%</p>
+                                <p className="text-xs text-muted-foreground">Happy</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1"
+                                onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
+                              >
+                                <Settings className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => handleSyncToRetell(agent.id)}
+                                disabled={syncingAgentId === agent.id}
+                              >
+                                {syncingAgentId === agent.id ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="w-4 h-4 mr-1" />
+                                )}
+                                Sync
+                              </Button>
+                            </div>
+                            {agent.retell_agent_id && (
+                              <p className="text-xs text-muted-foreground mt-2 truncate">
+                                Retell ID: {agent.retell_agent_id}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+                              <History className="w-3 h-3" />
+                              <span>
+                                Synced {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* SMS Agents Section */}
+            {(() => {
+              const smsAgents = agents.filter(a => 
+                a.voice_type === "Speed to Lead" || a.voice_id === "sms-agent" || a.voice_model === "sms"
+              );
+              const hasOtherAgents = agents.some(a => 
+                !(a.voice_type === "Speed to Lead" || a.voice_id === "sms-agent" || a.voice_model === "sms")
+              );
+              if (smsAgents.length === 0) return null;
+              return (
+                <>
+                  {hasOtherAgents && <Separator className="my-4" />}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">SMS Agents</h4>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {smsAgents.map((agent) => {
+                        const isLive = isAgentLive(agent.retell_agent_id);
+                        return (
+                          <Card key={agent.id} className={`relative overflow-hidden ${isLive ? "ring-2 ring-green-500" : ""}`}>
+                            {isLive && (
+                              <div className="absolute top-2 right-2">
+                                <Badge className="bg-green-500 text-white gap-1">
+                                  <CircleDot className="w-3 h-3 animate-pulse" />
+                                  Live
+                                </Badge>
+                              </div>
+                            )}
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                                    <Bot className="w-6 h-6 text-white" />
+                                  </div>
+                                  <Badge variant="secondary" className="text-xs">
+                                    SMS Agent
+                                  </Badge>
+                                </div>
+                                <Switch
+                                  checked={agent.is_active}
+                                  onCheckedChange={(checked) => toggleAgentStatus(agent.id, checked)}
+                                />
+                              </div>
+                              <CardTitle className="text-lg mt-2">{agent.name}</CardTitle>
+                              <CardDescription>
+                                {agent.voice_type}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-3 gap-2 text-center">
+                                <div className="p-2 rounded-lg bg-muted/50">
+                                  <Phone className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                  <p className="text-lg font-bold">{agent.total_calls}</p>
+                                  <p className="text-xs text-muted-foreground">Calls</p>
+                                </div>
+                                <div className="p-2 rounded-lg bg-muted/50">
+                                  <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                  <p className="text-lg font-bold">{formatDuration(agent.avg_duration_seconds)}</p>
+                                  <p className="text-xs text-muted-foreground">Avg</p>
+                                </div>
+                                <div className="p-2 rounded-lg bg-muted/50">
+                                  <TrendingUp className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                                  <p className="text-lg font-bold">{agent.satisfaction_score}%</p>
+                                  <p className="text-xs text-muted-foreground">Happy</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 mt-3">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => navigate(`/dashboard/agents/${agent.id}/edit`)}
+                                >
+                                  <Settings className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => handleSyncToRetell(agent.id)}
+                                  disabled={syncingAgentId === agent.id}
+                                >
+                                  {syncingAgentId === agent.id ? (
+                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4 mr-1" />
+                                  )}
+                                  Sync
+                                </Button>
+                              </div>
+                              {agent.retell_agent_id && (
+                                <p className="text-xs text-muted-foreground mt-2 truncate">
+                                  Retell ID: {agent.retell_agent_id}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+                                <History className="w-3 h-3" />
+                                <span>
+                                  Synced {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         ) : null}
 
