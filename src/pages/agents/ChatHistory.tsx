@@ -50,7 +50,7 @@ const ChatHistory = () => {
   const getStatusBadge = (conv: SmsConversation) => {
     if (conv.is_escalated) {
       return (
-        <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30">
+        <Badge variant="destructive">
           <AlertTriangle className="w-3 h-3 mr-1" />
           Escalated
         </Badge>
@@ -66,14 +66,14 @@ const ChatHistory = () => {
     }
     if (conv.appointment_scheduled) {
       return (
-        <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30">
+        <Badge variant="default" className="bg-primary/15 text-primary border-primary/30">
           <Calendar className="w-3 h-3 mr-1" />
           Booked
         </Badge>
       );
     }
     return (
-      <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30">
+      <Badge variant="outline">
         Active
       </Badge>
     );
@@ -82,9 +82,9 @@ const ChatHistory = () => {
   const getSentimentColor = (sentiment: string | null) => {
     switch (sentiment) {
       case "positive":
-        return "text-green-600";
+        return "text-primary";
       case "negative":
-        return "text-red-600";
+        return "text-destructive";
       default:
         return "text-muted-foreground";
     }
@@ -238,7 +238,7 @@ const ChatHistory = () => {
 
           {/* Escalation Banner */}
           {selectedConversation.is_escalated && (
-            <div className="p-3 bg-red-500/10 border-t border-red-500/20 flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
+            <div className="p-3 bg-destructive/10 border-t border-destructive/20 flex items-center gap-2 text-sm text-destructive">
               <AlertTriangle className="w-4 h-4" />
               <span>
                 Escalated{" "}
