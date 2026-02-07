@@ -68,11 +68,11 @@ const SMS = () => {
   const selectAgent = (agent: SmsAgent) => {
     setSelectedAgent(agent);
     setEditName(agent.name);
-    setEditPrompt(agent.system_prompt || "");
+    setEditPrompt(agent.prompt || "");
     setEditGreeting(agent.greeting_message || "");
-    setEditModel(agent.model || "gpt-4o-mini");
-    setEditTemperature(agent.temperature ?? 0.7);
-    setEditMaxTokens(agent.max_tokens ?? 500);
+    setEditModel("gpt-4o-mini");
+    setEditTemperature(0.7);
+    setEditMaxTokens(500);
     setEditIsActive(agent.is_active ?? true);
   };
 
@@ -91,11 +91,8 @@ const SMS = () => {
     if (!selectedAgent) return;
     await updateSmsAgent(selectedAgent.id, {
       name: editName,
-      system_prompt: editPrompt,
+      prompt: editPrompt,
       greeting_message: editGreeting,
-      model: editModel,
-      temperature: editTemperature,
-      max_tokens: editMaxTokens,
       is_active: editIsActive,
     });
   };

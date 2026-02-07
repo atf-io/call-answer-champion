@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,24 +18,67 @@ export interface Review {
   updatedAt: string;
 }
 
+function mapReview(data: any): Review {
+  return {
+    id: data.id,
+    googleReviewId: data.google_review_id,
+    authorName: data.author_name,
+    authorPhotoUrl: data.author_photo_url,
+    rating: data.rating,
+    reviewText: data.review_text,
+    reviewDate: data.review_date,
+    responseText: data.response_text,
+    responseDate: data.response_date,
+    status: data.status ?? 'pending',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
 export const useReviews = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: reviews = [], isLoading: loading } = useQuery({
-    queryKey: ['reviews'],
-    queryFn: () => api.get<Review[]>("/api/reviews"),
+    queryKey: ['reviews', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('review_date', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching reviews:', error);
+        return [];
+      }
+      
+      return data.map(mapReview);
+    },
     enabled: !!user,
   });
 
   const respondMutation = useMutation({
     mutationFn: async ({ id, responseText }: { id: string; responseText: string }) => {
-      return api.patch<Review>(`/api/reviews/${id}`, {
-        responseText,
-        responseDate: new Date().toISOString(),
-        status: "responded",
-      });
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('reviews')
+        .update({
+          response_text: responseText,
+          response_date: new Date().toISOString(),
+          status: 'responded',
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapReview(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
@@ -55,7 +98,18 @@ export const useReviews = () => {
 
   const ignoreMutation = useMutation({
     mutationFn: async (id: string) => {
-      return api.patch<Review>(`/api/reviews/${id}`, { status: "ignored" });
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('reviews')
+        .update({ status: 'ignored' })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapReview(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] });

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -75,16 +75,46 @@ export interface CreateAgentData {
   reminder_max_count?: number;
 }
 
-function camelToSnake(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
-function mapAgentFromApi(raw: any): Agent {
-  const mapped: any = {};
-  for (const key of Object.keys(raw)) {
-    mapped[camelToSnake(key)] = raw[key];
-  }
-  return mapped as Agent;
+function mapAgentFromDb(data: any): Agent {
+  return {
+    id: data.id,
+    name: data.name,
+    retell_agent_id: data.retell_agent_id,
+    voice_type: data.voice_type ?? 'professional',
+    personality: data.personality ?? '',
+    greeting_message: data.greeting_message ?? '',
+    schedule_start: data.schedule_start ?? '09:00',
+    schedule_end: data.schedule_end ?? '17:00',
+    schedule_days: data.schedule_days ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    is_active: data.is_active ?? false,
+    total_calls: data.total_calls ?? 0,
+    avg_duration_seconds: data.avg_duration_seconds ?? 0,
+    satisfaction_score: data.satisfaction_score ?? 0,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    voice_id: data.voice_id,
+    voice_model: data.voice_model,
+    voice_temperature: data.voice_temperature,
+    voice_speed: data.voice_speed,
+    volume: data.volume,
+    responsiveness: data.responsiveness,
+    interruption_sensitivity: data.interruption_sensitivity,
+    enable_backchannel: data.enable_backchannel,
+    backchannel_frequency: data.backchannel_frequency,
+    ambient_sound: data.ambient_sound,
+    ambient_sound_volume: data.ambient_sound_volume,
+    language: data.language,
+    enable_voicemail_detection: data.enable_voicemail_detection,
+    voicemail_message: data.voicemail_message,
+    voicemail_detection_timeout_ms: data.voicemail_detection_timeout_ms,
+    max_call_duration_ms: data.max_call_duration_ms,
+    end_call_after_silence_ms: data.end_call_after_silence_ms,
+    begin_message_delay_ms: data.begin_message_delay_ms,
+    normalize_for_speech: data.normalize_for_speech,
+    boosted_keywords: data.boosted_keywords,
+    reminder_trigger_ms: data.reminder_trigger_ms,
+    reminder_max_count: data.reminder_max_count,
+  };
 }
 
 export const useAgents = () => {
@@ -93,27 +123,73 @@ export const useAgents = () => {
   const queryClient = useQueryClient();
 
   const { data: agents = [], isLoading: loading } = useQuery({
-    queryKey: ['agents'],
+    queryKey: ['agents', user?.id],
     queryFn: async () => {
-      const rawAgents = await api.get<any[]>("/api/agents");
-      return rawAgents.map(mapAgentFromApi);
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('ai_agents')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching agents:', error);
+        return [];
+      }
+      return data.map(mapAgentFromDb);
     },
     enabled: !!user,
   });
 
   const createMutation = useMutation({
     mutationFn: async (agentData: CreateAgentData) => {
-      const data = await api.post<{ agent: any }>("/api/retell-sync", {
-        action: "create-agent",
-        agentConfig: agentData,
-      });
-      return data.agent ? mapAgentFromApi(data.agent) : null;
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('ai_agents')
+        .insert({
+          user_id: user.id,
+          name: agentData.name,
+          voice_type: agentData.voice_type,
+          personality: agentData.personality,
+          greeting_message: agentData.greeting_message,
+          schedule_start: agentData.schedule_start,
+          schedule_end: agentData.schedule_end,
+          schedule_days: agentData.schedule_days,
+          voice_id: agentData.voice_id,
+          voice_model: agentData.voice_model,
+          voice_temperature: agentData.voice_temperature,
+          voice_speed: agentData.voice_speed,
+          volume: agentData.volume,
+          responsiveness: agentData.responsiveness,
+          interruption_sensitivity: agentData.interruption_sensitivity,
+          enable_backchannel: agentData.enable_backchannel,
+          backchannel_frequency: agentData.backchannel_frequency,
+          ambient_sound: agentData.ambient_sound,
+          ambient_sound_volume: agentData.ambient_sound_volume,
+          language: agentData.language,
+          enable_voicemail_detection: agentData.enable_voicemail_detection,
+          voicemail_message: agentData.voicemail_message,
+          voicemail_detection_timeout_ms: agentData.voicemail_detection_timeout_ms,
+          max_call_duration_ms: agentData.max_call_duration_ms,
+          end_call_after_silence_ms: agentData.end_call_after_silence_ms,
+          begin_message_delay_ms: agentData.begin_message_delay_ms,
+          normalize_for_speech: agentData.normalize_for_speech,
+          boosted_keywords: agentData.boosted_keywords,
+          reminder_trigger_ms: agentData.reminder_trigger_ms,
+          reminder_max_count: agentData.reminder_max_count,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapAgentFromDb(data);
     },
     onSuccess: (_agent, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       toast({
         title: "Agent Created",
-        description: `${variables.name} has been created and synced to Retell.`,
+        description: `${variables.name} has been created.`,
       });
     },
     onError: (error) => {
@@ -127,18 +203,24 @@ export const useAgents = () => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateAgentData> }) => {
-      const data = await api.post<{ agent: any }>("/api/retell-sync", {
-        action: "update-agent",
-        agentId: id,
-        agentConfig: updates,
-      });
-      return data.agent ? mapAgentFromApi(data.agent) : null;
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('ai_agents')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return mapAgentFromDb(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       toast({
         title: "Agent Updated",
-        description: "Agent settings have been saved and synced to Retell.",
+        description: "Agent settings have been saved.",
       });
     },
     onError: (error) => {
@@ -152,17 +234,22 @@ export const useAgents = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post("/api/retell-sync", {
-        action: "delete-agent",
-        agentId: id,
-      });
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('ai_agents')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
       return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       toast({
         title: "Agent Deleted",
-        description: "Agent has been removed from Retell.",
+        description: "Agent has been removed.",
       });
     },
     onError: (error) => {
