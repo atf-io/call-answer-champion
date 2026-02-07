@@ -5,17 +5,19 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Contact {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
   phone: string | null;
   email: string | null;
   source: string;
   status: string;
+  service_requested: string | null;
+  address: string | null;
   tags: string[] | null;
   notes: string | null;
-  lastContactedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  last_contacted_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateContactData {
@@ -24,12 +26,12 @@ export interface CreateContactData {
   email?: string;
   source?: string;
   status?: string;
+  service_requested?: string;
+  address?: string;
   tags?: string[];
   notes?: string;
 }
 
-// Note: The contacts table doesn't exist in the schema yet
-// This hook will return empty data until the table is created
 export function useContacts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -42,16 +44,38 @@ export function useContacts() {
   } = useQuery<Contact[]>({
     queryKey: ['contacts', user?.id],
     queryFn: async () => {
-      // Return empty array - contacts table needs to be created
-      return [];
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!user,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateContactData) => {
-      toast({ title: "Contacts feature requires database setup", variant: "destructive" });
-      throw new Error("Contacts table not available");
+      const { data: contact, error } = await supabase
+        .from('contacts')
+        .insert({
+          user_id: user!.id,
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          source: data.source || 'manual',
+          status: data.status || 'new',
+          service_requested: data.service_requested,
+          address: data.address,
+          tags: data.tags,
+          notes: data.notes,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return contact;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -64,7 +88,18 @@ export function useContacts() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CreateContactData> }) => {
-      throw new Error("Contacts table not available");
+      const { data: contact, error } = await supabase
+        .from('contacts')
+        .update({
+          ...data,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return contact;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
@@ -77,7 +112,12 @@ export function useContacts() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      throw new Error("Contacts table not available");
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
