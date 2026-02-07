@@ -249,6 +249,122 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_incidents: {
+        Row: {
+          alert_rule_id: string
+          created_at: string
+          current_value: number
+          id: string
+          resolved_at: string | null
+          status: string
+          threshold_value: number
+          triggered_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_rule_id: string
+          created_at?: string
+          current_value: number
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          threshold_value: number
+          triggered_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_rule_id?: string
+          created_at?: string
+          current_value?: number
+          id?: string
+          resolved_at?: string | null
+          status?: string
+          threshold_value?: number
+          triggered_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_incidents_alert_rule_id_fkey"
+            columns: ["alert_rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_rules: {
+        Row: {
+          agent_filter: string[] | null
+          comparator: string
+          created_at: string
+          description: string | null
+          disconnection_reason_filter: string[] | null
+          email_recipients: string[] | null
+          error_code_filter: string[] | null
+          evaluation_frequency: string
+          evaluation_window: string
+          id: string
+          is_active: boolean | null
+          last_evaluated_at: string | null
+          last_triggered_at: string | null
+          metric_type: string
+          name: string
+          threshold_type: string
+          threshold_value: number
+          updated_at: string
+          user_id: string
+          webhook_secret: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          agent_filter?: string[] | null
+          comparator?: string
+          created_at?: string
+          description?: string | null
+          disconnection_reason_filter?: string[] | null
+          email_recipients?: string[] | null
+          error_code_filter?: string[] | null
+          evaluation_frequency?: string
+          evaluation_window?: string
+          id?: string
+          is_active?: boolean | null
+          last_evaluated_at?: string | null
+          last_triggered_at?: string | null
+          metric_type: string
+          name: string
+          threshold_type?: string
+          threshold_value: number
+          updated_at?: string
+          user_id: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          agent_filter?: string[] | null
+          comparator?: string
+          created_at?: string
+          description?: string | null
+          disconnection_reason_filter?: string[] | null
+          email_recipients?: string[] | null
+          error_code_filter?: string[] | null
+          evaluation_frequency?: string
+          evaluation_window?: string
+          id?: string
+          is_active?: boolean | null
+          last_evaluated_at?: string | null
+          last_triggered_at?: string | null
+          metric_type?: string
+          name?: string
+          threshold_type?: string
+          threshold_value?: number
+          updated_at?: string
+          user_id?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           agent_id: string | null
