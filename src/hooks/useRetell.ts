@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,7 +61,15 @@ export const useRetell = () => {
       throw new Error("Not authenticated");
     }
 
-    return api.post("/api/retell-sync", { action, ...params });
+    const { data, error } = await supabase.functions.invoke("retell-sync", {
+      body: { action, ...params },
+    });
+
+    if (error) {
+      throw new Error(error.message || "Request failed");
+    }
+
+    return data;
   }, [user]);
 
   const fetchAgents = useCallback(async () => {
