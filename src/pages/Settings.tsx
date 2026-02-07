@@ -24,12 +24,12 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState({
-    full_name: "",
-    company_name: "",
-    notification_email: true,
-    notification_sms: false,
-    auto_respond_reviews: false,
-    review_response_tone: "professional",
+    fullName: "",
+    companyName: "",
+    notificationEmail: true,
+    notificationSms: false,
+    autoRespondReviews: false,
+    reviewResponseTone: "professional",
     timezone: "America/New_York",
   });
 
@@ -38,17 +38,17 @@ const Settings = () => {
     if (profile) {
       setFormData((prev) => ({
         ...prev,
-        full_name: profile.full_name || "",
-        company_name: profile.company_name || "",
+        fullName: profile.fullName || "",
+        companyName: profile.companyName || "",
       }));
     }
     if (settings) {
       setFormData((prev) => ({
         ...prev,
-        notification_email: settings.notification_email,
-        notification_sms: settings.notification_sms,
-        auto_respond_reviews: settings.auto_respond_reviews,
-        review_response_tone: settings.review_response_tone,
+        notificationEmail: settings.notificationEmail,
+        notificationSms: settings.notificationSms,
+        autoRespondReviews: settings.autoRespondReviews,
+        reviewResponseTone: settings.reviewResponseTone,
         timezone: settings.timezone,
       }));
     }
@@ -57,8 +57,8 @@ const Settings = () => {
   const handleSaveProfile = async () => {
     setSaving(true);
     await updateProfile({
-      full_name: formData.full_name,
-      company_name: formData.company_name,
+      fullName: formData.fullName,
+      companyName: formData.companyName,
     });
     setSaving(false);
   };
@@ -66,10 +66,10 @@ const Settings = () => {
   const handleSaveNotifications = async () => {
     setSaving(true);
     await updateSettings({
-      notification_email: formData.notification_email,
-      notification_sms: formData.notification_sms,
-      auto_respond_reviews: formData.auto_respond_reviews,
-      review_response_tone: formData.review_response_tone,
+      notificationEmail: formData.notificationEmail,
+      notificationSms: formData.notificationSms,
+      autoRespondReviews: formData.autoRespondReviews,
+      reviewResponseTone: formData.reviewResponseTone,
       timezone: formData.timezone,
     });
     setSaving(false);
@@ -119,20 +119,20 @@ const Settings = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name</Label>
+                <Label htmlFor="fullName">Full Name</Label>
                 <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  id="fullName"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   placeholder="John Doe"
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="company_name">Company Name</Label>
+                <Label htmlFor="companyName">Company Name</Label>
                 <Input
-                  id="company_name"
-                  value={formData.company_name}
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                  id="companyName"
+                  value={formData.companyName}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   placeholder="Acme Inc."
                 />
               </div>
@@ -169,7 +169,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {settings?.retell_api_key_configured ? (
+                  {settings?.retellApiKeyConfigured ? (
                     <span className="flex items-center gap-2 text-sm text-success">
                       <CheckCircle2 className="w-4 h-4" />
                       Connected
@@ -181,7 +181,7 @@ const Settings = () => {
                     </span>
                   )}
                   <Button variant="outline" size="sm">
-                    {settings?.retell_api_key_configured ? "Manage" : "Connect"}
+                    {settings?.retellApiKeyConfigured ? "Manage" : "Connect"}
                   </Button>
                 </div>
               </div>
@@ -198,7 +198,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {settings?.google_api_configured ? (
+                  {settings?.googleApiConfigured ? (
                     <span className="flex items-center gap-2 text-sm text-success">
                       <CheckCircle2 className="w-4 h-4" />
                       Connected
@@ -210,7 +210,7 @@ const Settings = () => {
                     </span>
                   )}
                   <Button variant="outline" size="sm">
-                    {settings?.google_api_configured ? "Manage" : "Connect"}
+                    {settings?.googleApiConfigured ? "Manage" : "Connect"}
                   </Button>
                 </div>
               </div>
@@ -236,9 +236,9 @@ const Settings = () => {
                   <p className="text-sm text-muted-foreground">Receive updates via email</p>
                 </div>
                 <Switch
-                  checked={formData.notification_email}
+                  checked={formData.notificationEmail}
                   onCheckedChange={(checked) => 
-                    setFormData({ ...formData, notification_email: checked })
+                    setFormData({ ...formData, notificationEmail: checked })
                   }
                 />
               </div>
@@ -249,9 +249,9 @@ const Settings = () => {
                   <p className="text-sm text-muted-foreground">Receive alerts via text message</p>
                 </div>
                 <Switch
-                  checked={formData.notification_sms}
+                  checked={formData.notificationSms}
                   onCheckedChange={(checked) => 
-                    setFormData({ ...formData, notification_sms: checked })
+                    setFormData({ ...formData, notificationSms: checked })
                   }
                 />
               </div>
@@ -262,9 +262,9 @@ const Settings = () => {
                   <p className="text-sm text-muted-foreground">Let AI automatically respond to new reviews</p>
                 </div>
                 <Switch
-                  checked={formData.auto_respond_reviews}
+                  checked={formData.autoRespondReviews}
                   onCheckedChange={(checked) => 
-                    setFormData({ ...formData, auto_respond_reviews: checked })
+                    setFormData({ ...formData, autoRespondReviews: checked })
                   }
                 />
               </div>

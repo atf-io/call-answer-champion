@@ -25,7 +25,7 @@ const CallHistory = () => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      log.caller_number?.toLowerCase().includes(query) ||
+      log.callerNumber?.toLowerCase().includes(query) ||
       log.agent?.name?.toLowerCase().includes(query) ||
       log.transcript?.toLowerCase().includes(query) ||
       log.status?.toLowerCase().includes(query)
@@ -190,18 +190,18 @@ const CallHistory = () => {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{log.caller_number || "Unknown Caller"}</span>
+                          <span className="font-medium">{log.callerNumber || "Unknown Caller"}</span>
                           {getStatusBadge(log.status)}
                           {getSentimentBadge(log.sentiment)}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {log.agent?.name || "Unknown Agent"} • {format(new Date(log.created_at), "MMM d, yyyy h:mm a")}
+                          {log.agent?.name || "Unknown Agent"} • {format(new Date(log.createdAt), "MMM d, yyyy h:mm a")}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="font-medium">{formatDuration(log.duration_seconds)}</p>
+                        <p className="font-medium">{formatDuration(log.durationSeconds)}</p>
                         <p className="text-xs text-muted-foreground">Duration</p>
                       </div>
                       {expandedCall === log.id ? (

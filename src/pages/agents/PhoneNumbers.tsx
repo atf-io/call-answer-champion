@@ -19,9 +19,9 @@ const PhoneNumbers = () => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      phone.phone_number?.toLowerCase().includes(query) ||
+      phone.phoneNumber?.toLowerCase().includes(query) ||
       phone.nickname?.toLowerCase().includes(query) ||
-      phone.area_code?.toLowerCase().includes(query)
+      phone.areaCode?.toLowerCase().includes(query)
     );
   });
 
@@ -169,9 +169,9 @@ const PhoneNumbers = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium font-mono">
-                            {formatPhoneNumber(phone.phone_number)}
+                            {formatPhoneNumber(phone.phoneNumber)}
                           </span>
-                          {phone.is_active ? (
+                          {phone.isActive ? (
                             <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Active
@@ -187,18 +187,18 @@ const PhoneNumbers = () => {
                           {phone.nickname && (
                             <span className="font-medium">{phone.nickname}</span>
                           )}
-                          {phone.area_code && (
-                            <span>• Area code: {phone.area_code}</span>
+                          {phone.areaCode && (
+                            <span>• Area code: {phone.areaCode}</span>
                           )}
-                          {phone.inbound_agent && (
-                            <span>• Inbound: {phone.inbound_agent.name}</span>
+                          {phone.inboundAgent && (
+                            <span>• Inbound: {phone.inboundAgent.name}</span>
                           )}
                         </div>
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {phone.last_synced_at && (
-                        <p>Synced: {format(new Date(phone.last_synced_at), "MMM d, h:mm a")}</p>
+                      {phone.lastSyncedAt && (
+                        <p>Synced: {format(new Date(phone.lastSyncedAt), "MMM d, h:mm a")}</p>
                       )}
                     </div>
                   </div>
