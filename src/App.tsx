@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -57,46 +58,48 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/agents" element={<ProtectedRoute><AgentsList /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/:agentId/edit" element={<ProtectedRoute><AgentEdit /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/knowledge" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/phone-numbers" element={<ProtectedRoute><PhoneNumbers /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/batch-call" element={<ProtectedRoute><BatchCall /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/call-history" element={<ProtectedRoute><CallHistory /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/chat-history" element={<ProtectedRoute><ChatHistory /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/analytics" element={<ProtectedRoute><AgentAnalytics /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/quality" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/alerting" element={<ProtectedRoute><Alerting /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/settings" element={<ProtectedRoute><AgentSettings /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/playground" element={<ProtectedRoute><Playground /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/sms" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/sms/:agentId" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/sms-analytics" element={<ProtectedRoute><SmsAnalytics /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/sms-simulator" element={<ProtectedRoute><SmsSimulator /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
-            <Route path="/dashboard/agents/webhooks" element={<ProtectedRoute><Webhooks /></ProtectedRoute>} />
-            <Route path="/dashboard/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/agents" element={<ProtectedRoute><AgentsList /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/:agentId/edit" element={<ProtectedRoute><AgentEdit /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/knowledge" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/phone-numbers" element={<ProtectedRoute><PhoneNumbers /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/batch-call" element={<ProtectedRoute><BatchCall /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/call-history" element={<ProtectedRoute><CallHistory /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/chat-history" element={<ProtectedRoute><ChatHistory /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/analytics" element={<ProtectedRoute><AgentAnalytics /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/quality" element={<ProtectedRoute><QualityAssurance /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/alerting" element={<ProtectedRoute><Alerting /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/settings" element={<ProtectedRoute><AgentSettings /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/playground" element={<ProtectedRoute><Playground /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/sms" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/sms/:agentId" element={<ProtectedRoute><SMS /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/sms-analytics" element={<ProtectedRoute><SmsAnalytics /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/sms-simulator" element={<ProtectedRoute><SmsSimulator /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+              <Route path="/dashboard/agents/webhooks" element={<ProtectedRoute><Webhooks /></ProtectedRoute>} />
+              <Route path="/dashboard/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+              <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
