@@ -14,6 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_function_assignments: {
+        Row: {
+          created_at: string
+          custom_failure_message: string | null
+          custom_success_message: string | null
+          function_id: string
+          id: string
+          is_enabled: boolean | null
+          sms_agent_id: string | null
+          voice_agent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_failure_message?: string | null
+          custom_success_message?: string | null
+          function_id: string
+          id?: string
+          is_enabled?: boolean | null
+          sms_agent_id?: string | null
+          voice_agent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_failure_message?: string | null
+          custom_success_message?: string | null
+          function_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          sms_agent_id?: string | null
+          voice_agent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_function_assignments_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "agent_functions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_function_assignments_sms_agent_id_fkey"
+            columns: ["sms_agent_id"]
+            isOneToOne: false
+            referencedRelation: "sms_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_function_assignments_voice_agent_id_fkey"
+            columns: ["voice_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_functions: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          display_name: string
+          failure_message: string | null
+          id: string
+          is_active: boolean | null
+          is_predefined: boolean | null
+          name: string
+          parameters: Json | null
+          success_message: string | null
+          updated_at: string
+          user_id: string
+          webhook_headers: Json | null
+          webhook_method: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          display_name: string
+          failure_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_predefined?: boolean | null
+          name: string
+          parameters?: Json | null
+          success_message?: string | null
+          updated_at?: string
+          user_id: string
+          webhook_headers?: Json | null
+          webhook_method?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          display_name?: string
+          failure_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_predefined?: boolean | null
+          name?: string
+          parameters?: Json | null
+          success_message?: string | null
+          updated_at?: string
+          user_id?: string
+          webhook_headers?: Json | null
+          webhook_method?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       ai_agents: {
         Row: {
           ambient_sound: string | null
@@ -334,16 +446,29 @@ export type Database = {
         Row: {
           avatar_url: string | null
           business_address: string | null
+          business_certifications: string[] | null
           business_colors: Json | null
           business_description: string | null
+          business_email: string | null
+          business_emergency_service: boolean | null
+          business_equipment_brands: string[] | null
           business_faqs: Json | null
+          business_guarantees: string[] | null
+          business_hours: Json | null
+          business_locations: Json | null
           business_logo_url: string | null
           business_name: string | null
+          business_payment_methods: string[] | null
           business_phone: string | null
+          business_pricing_info: string | null
+          business_service_area: Json | null
           business_services: string[] | null
           business_social_links: Json | null
+          business_specialties: string[] | null
+          business_tagline: string | null
           business_team_info: string | null
           business_website: string | null
+          business_years_in_business: string | null
           company_name: string | null
           created_at: string
           email: string | null
@@ -356,16 +481,29 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           business_address?: string | null
+          business_certifications?: string[] | null
           business_colors?: Json | null
           business_description?: string | null
+          business_email?: string | null
+          business_emergency_service?: boolean | null
+          business_equipment_brands?: string[] | null
           business_faqs?: Json | null
+          business_guarantees?: string[] | null
+          business_hours?: Json | null
+          business_locations?: Json | null
           business_logo_url?: string | null
           business_name?: string | null
+          business_payment_methods?: string[] | null
           business_phone?: string | null
+          business_pricing_info?: string | null
+          business_service_area?: Json | null
           business_services?: string[] | null
           business_social_links?: Json | null
+          business_specialties?: string[] | null
+          business_tagline?: string | null
           business_team_info?: string | null
           business_website?: string | null
+          business_years_in_business?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
@@ -378,16 +516,29 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           business_address?: string | null
+          business_certifications?: string[] | null
           business_colors?: Json | null
           business_description?: string | null
+          business_email?: string | null
+          business_emergency_service?: boolean | null
+          business_equipment_brands?: string[] | null
           business_faqs?: Json | null
+          business_guarantees?: string[] | null
+          business_hours?: Json | null
+          business_locations?: Json | null
           business_logo_url?: string | null
           business_name?: string | null
+          business_payment_methods?: string[] | null
           business_phone?: string | null
+          business_pricing_info?: string | null
+          business_service_area?: Json | null
           business_services?: string[] | null
           business_social_links?: Json | null
+          business_specialties?: string[] | null
+          business_tagline?: string | null
           business_team_info?: string | null
           business_website?: string | null
+          business_years_in_business?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
@@ -458,12 +609,399 @@ export type Database = {
           },
         ]
       }
+      sms_agents: {
+        Row: {
+          agent_type: string
+          auto_end_after_minutes: number | null
+          avg_response_time_seconds: number | null
+          collect_address: boolean | null
+          collect_appointment: boolean | null
+          collect_service_details: boolean | null
+          conversion_rate: number | null
+          created_at: string
+          escalation_keywords: string[] | null
+          escalation_phone: string | null
+          follow_up_delay_minutes: number | null
+          follow_up_enabled: boolean | null
+          follow_up_message: string | null
+          greeting_message: string | null
+          id: string
+          is_active: boolean | null
+          lead_sources: string[] | null
+          max_follow_ups: number | null
+          max_messages_per_conversation: number | null
+          name: string
+          personality: string | null
+          prompt: string | null
+          response_delay_ms: number | null
+          response_time_seconds: number | null
+          total_conversations: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_type?: string
+          auto_end_after_minutes?: number | null
+          avg_response_time_seconds?: number | null
+          collect_address?: boolean | null
+          collect_appointment?: boolean | null
+          collect_service_details?: boolean | null
+          conversion_rate?: number | null
+          created_at?: string
+          escalation_keywords?: string[] | null
+          escalation_phone?: string | null
+          follow_up_delay_minutes?: number | null
+          follow_up_enabled?: boolean | null
+          follow_up_message?: string | null
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          lead_sources?: string[] | null
+          max_follow_ups?: number | null
+          max_messages_per_conversation?: number | null
+          name: string
+          personality?: string | null
+          prompt?: string | null
+          response_delay_ms?: number | null
+          response_time_seconds?: number | null
+          total_conversations?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_type?: string
+          auto_end_after_minutes?: number | null
+          avg_response_time_seconds?: number | null
+          collect_address?: boolean | null
+          collect_appointment?: boolean | null
+          collect_service_details?: boolean | null
+          conversion_rate?: number | null
+          created_at?: string
+          escalation_keywords?: string[] | null
+          escalation_phone?: string | null
+          follow_up_delay_minutes?: number | null
+          follow_up_enabled?: boolean | null
+          follow_up_message?: string | null
+          greeting_message?: string | null
+          id?: string
+          is_active?: boolean | null
+          lead_sources?: string[] | null
+          max_follow_ups?: number | null
+          max_messages_per_conversation?: number | null
+          name?: string
+          personality?: string | null
+          prompt?: string | null
+          response_delay_ms?: number | null
+          response_time_seconds?: number | null
+          total_conversations?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_campaign_enrollments: {
+        Row: {
+          campaign_id: string
+          completed_at: string | null
+          conversation_id: string
+          created_at: string
+          current_step_order: number
+          id: string
+          lead_name: string | null
+          lead_phone: string
+          lead_source: string | null
+          metadata: Json | null
+          next_message_at: string | null
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          completed_at?: string | null
+          conversation_id: string
+          created_at?: string
+          current_step_order?: number
+          id?: string
+          lead_name?: string | null
+          lead_phone: string
+          lead_source?: string | null
+          metadata?: Json | null
+          next_message_at?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          completed_at?: string | null
+          conversation_id?: string
+          created_at?: string
+          current_step_order?: number
+          id?: string
+          lead_name?: string | null
+          lead_phone?: string
+          lead_source?: string | null
+          metadata?: Json | null
+          next_message_at?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_campaign_enrollments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sms_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_campaign_enrollments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "sms_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_campaign_steps: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          delay_days: number
+          delay_hours: number
+          id: string
+          is_active: boolean | null
+          message_template: string
+          step_order: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          id?: string
+          is_active?: boolean | null
+          message_template: string
+          step_order: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          delay_days?: number
+          delay_hours?: number
+          id?: string
+          is_active?: boolean | null
+          message_template?: string
+          step_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_campaign_steps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sms_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_campaigns: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          lead_sources: string[] | null
+          name: string
+          sms_agent_id: string | null
+          trigger_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          lead_sources?: string[] | null
+          name: string
+          sms_agent_id?: string | null
+          trigger_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          lead_sources?: string[] | null
+          name?: string
+          sms_agent_id?: string | null
+          trigger_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_campaigns_sms_agent_id_fkey"
+            columns: ["sms_agent_id"]
+            isOneToOne: false
+            referencedRelation: "sms_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_conversations: {
+        Row: {
+          address_collected: string | null
+          appointment_date: string | null
+          appointment_scheduled: boolean | null
+          conversion_status: string | null
+          created_at: string
+          ended_at: string | null
+          escalated_at: string | null
+          escalation_reason: string | null
+          follow_up_count: number | null
+          id: string
+          is_escalated: boolean | null
+          last_message_at: string | null
+          lead_email: string | null
+          lead_name: string | null
+          lead_phone: string
+          lead_source: string | null
+          message_count: number | null
+          metadata: Json | null
+          sentiment: string | null
+          service_details: string | null
+          sms_agent_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_collected?: string | null
+          appointment_date?: string | null
+          appointment_scheduled?: boolean | null
+          conversion_status?: string | null
+          created_at?: string
+          ended_at?: string | null
+          escalated_at?: string | null
+          escalation_reason?: string | null
+          follow_up_count?: number | null
+          id?: string
+          is_escalated?: boolean | null
+          last_message_at?: string | null
+          lead_email?: string | null
+          lead_name?: string | null
+          lead_phone: string
+          lead_source?: string | null
+          message_count?: number | null
+          metadata?: Json | null
+          sentiment?: string | null
+          service_details?: string | null
+          sms_agent_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_collected?: string | null
+          appointment_date?: string | null
+          appointment_scheduled?: boolean | null
+          conversion_status?: string | null
+          created_at?: string
+          ended_at?: string | null
+          escalated_at?: string | null
+          escalation_reason?: string | null
+          follow_up_count?: number | null
+          id?: string
+          is_escalated?: boolean | null
+          last_message_at?: string | null
+          lead_email?: string | null
+          lead_name?: string | null
+          lead_phone?: string
+          lead_source?: string | null
+          message_count?: number | null
+          metadata?: Json | null
+          sentiment?: string | null
+          service_details?: string | null
+          sms_agent_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_conversations_sms_agent_id_fkey"
+            columns: ["sms_agent_id"]
+            isOneToOne: false
+            referencedRelation: "sms_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_follow_up: boolean | null
+          is_greeting: boolean | null
+          metadata: Json | null
+          response_time_ms: number | null
+          sender_type: string
+          tokens_used: number | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_follow_up?: boolean | null
+          is_greeting?: boolean | null
+          metadata?: Json | null
+          response_time_ms?: number | null
+          sender_type: string
+          tokens_used?: number | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_follow_up?: boolean | null
+          is_greeting?: boolean | null
+          metadata?: Json | null
+          response_time_ms?: number | null
+          sender_type?: string
+          tokens_used?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "sms_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           auto_respond_reviews: boolean | null
           created_at: string
           google_api_configured: boolean | null
           id: string
+          lead_webhook_secret: string | null
           notification_email: boolean | null
           notification_sms: boolean | null
           retell_api_key_configured: boolean | null
@@ -477,6 +1015,7 @@ export type Database = {
           created_at?: string
           google_api_configured?: boolean | null
           id?: string
+          lead_webhook_secret?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           retell_api_key_configured?: boolean | null
@@ -490,6 +1029,7 @@ export type Database = {
           created_at?: string
           google_api_configured?: boolean | null
           id?: string
+          lead_webhook_secret?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           retell_api_key_configured?: boolean | null
