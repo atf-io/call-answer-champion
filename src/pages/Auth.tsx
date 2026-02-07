@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,14 +28,15 @@ const Auth = () => {
     const checkOnboardingStatus = async () => {
       if (user) {
         try {
-          const response = await fetch("/api/profile", { credentials: "include" });
-          if (response.ok) {
-            const profile = await response.json();
-            if (profile?.onboarding_completed) {
-              navigate("/dashboard");
-            } else {
-              navigate("/onboarding");
-            }
+          // Check profile in Supabase
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('onboarding_completed')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profile?.onboarding_completed) {
+            navigate("/dashboard");
           } else {
             navigate("/onboarding");
           }
@@ -117,9 +119,27 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    window.location.href = "/api/login";
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        }
+      });
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Google Sign In Failed",
+          description: error.message,
+        });
+      }
+    } catch (error) {
+      console.error("Google sign in error:", error);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
