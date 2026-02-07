@@ -47,6 +47,7 @@ import { useSmsCampaigns, SmsCampaign, CampaignStep } from "@/hooks/useSmsCampai
 import { useSmsAgents } from "@/hooks/useSmsAgents";
 import { formatDistanceToNow } from "date-fns";
 import VariableInserter from "@/components/campaigns/VariableInserter";
+import LeadSourceSelector from "@/components/campaigns/LeadSourceSelector";
 
 type ViewMode = "list" | "detail";
 
@@ -164,6 +165,7 @@ const Campaigns = () => {
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newAgentId, setNewAgentId] = useState("");
+  const [newLeadSources, setNewLeadSources] = useState<string[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<CampaignPreset | null>(null);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -173,6 +175,7 @@ const Campaigns = () => {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editAgentId, setEditAgentId] = useState("");
+  const [editLeadSources, setEditLeadSources] = useState<string[]>([]);
   const [editTargetCampaign, setEditTargetCampaign] = useState<SmsCampaign | null>(null);
 
   const [isCloning, setIsCloning] = useState(false);
@@ -231,6 +234,7 @@ const Campaigns = () => {
         name: newName.trim(),
         description: newDescription.trim() || undefined,
         sms_agent_id: newAgentId || undefined,
+        lead_sources: newLeadSources.length > 0 ? newLeadSources : undefined,
       });
       if (selectedPreset && campaign?.id) {
         setIsCreatingPresetSteps(true);
@@ -252,6 +256,7 @@ const Campaigns = () => {
       setNewName("");
       setNewDescription("");
       setNewAgentId("");
+      setNewLeadSources([]);
       setSelectedPreset(null);
       setCreateDialogOpen(false);
       if (campaign?.id) {
@@ -288,6 +293,7 @@ const Campaigns = () => {
     setEditName(campaign.name);
     setEditDescription(campaign.description || "");
     setEditAgentId(campaign.sms_agent_id || "");
+    setEditLeadSources(campaign.lead_sources || []);
     setEditDialogOpen(true);
   };
 
@@ -297,6 +303,7 @@ const Campaigns = () => {
       name: editName.trim(),
       description: editDescription.trim() || undefined,
       sms_agent_id: editAgentId || undefined,
+      lead_sources: editLeadSources.length > 0 ? editLeadSources : null,
     });
     if (selectedCampaign?.id === editTargetCampaign.id) {
       setSelectedCampaign({
@@ -304,6 +311,7 @@ const Campaigns = () => {
         name: editName.trim(),
         description: editDescription.trim() || null,
         sms_agent_id: editAgentId || null,
+        lead_sources: editLeadSources.length > 0 ? editLeadSources : null,
       });
     }
     setEditDialogOpen(false);
@@ -554,6 +562,17 @@ const Campaigns = () => {
                 </p>
               )}
 
+              {selectedCampaign.lead_sources && selectedCampaign.lead_sources.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Lead Sources:</span>
+                  {selectedCampaign.lead_sources.map((source) => (
+                    <Badge key={source} variant="secondary" className="capitalize">
+                      {source.replace(/_/g, " ")}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <CardTitle className="text-base">Campaign Steps</CardTitle>
@@ -749,6 +768,16 @@ const Campaigns = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Lead Sources</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Select which lead platforms should trigger this campaign automatically.
+              </p>
+              <LeadSourceSelector
+                selectedSources={newLeadSources}
+                onSelectionChange={setNewLeadSources}
+              />
+            </div>
             {selectedPreset && (
               <div className="space-y-2">
                 <Label>Pre-loaded Steps Preview</Label>
@@ -891,6 +920,16 @@ const Campaigns = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Lead Sources</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Select which lead platforms should trigger this campaign automatically.
+              </p>
+              <LeadSourceSelector
+                selectedSources={editLeadSources}
+                onSelectionChange={setEditLeadSources}
+              />
             </div>
           </div>
           <DialogFooter>
