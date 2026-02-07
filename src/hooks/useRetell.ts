@@ -105,10 +105,10 @@ export const useRetell = () => {
   const syncAgentsFromRetell = useCallback(async () => {
     setSyncing(true);
     try {
-      const data = await invokeRetellSync("sync-agents-from-retell") as { message: string; created: number; updated: number; total: number };
+      const data = await invokeRetellSync("sync-agents") as { message: string; synced: number; updated: number; total: number };
       toast({
         title: "Sync Complete",
-        description: data.message,
+        description: data.message || `Synced ${data.synced} new, updated ${data.updated} agents`,
       });
       return data;
     } catch (error) {

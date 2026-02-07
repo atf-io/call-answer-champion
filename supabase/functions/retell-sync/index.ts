@@ -112,6 +112,10 @@ serve(async (req) => {
         result = await createWebCall(RETELL_API_KEY, supabase, user.id, agentId, testConfig);
         break;
 
+      case "sync-agents":
+        result = await syncAgentsFromRetell(RETELL_API_KEY, supabase, user.id);
+        break;
+
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action" }),
@@ -1093,5 +1097,133 @@ async function createWebCall(
     access_token: webCall.access_token,
     call_id: webCall.call_id,
     agent_id: retellAgentId,
+  };
+}
+
+// Sync agents from Retell to local database
+async function syncAgentsFromRetell(
+  apiKey: string,
+  supabase: any,
+  userId: string
+) {
+  console.log(`Syncing agents from Retell for user: ${userId}`);
+
+  // Fetch all agents from Retell
+  const { agents } = await listRetellAgents(apiKey);
+
+  // Get existing agents for this user
+  const { data: existingAgents } = await supabase
+    .from("ai_agents")
+    .select("id, retell_agent_id, name")
+    .eq("user_id", userId);
+
+  const existingRetellIds = new Set(existingAgents?.map((a: any) => a.retell_agent_id).filter(Boolean) || []);
+  const existingByRetellId = new Map(existingAgents?.filter((a: any) => a.retell_agent_id).map((a: any) => [a.retell_agent_id, a]) || []);
+
+  let synced = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const retellAgent of agents) {
+    try {
+      // Fetch full agent details from Retell
+      const agentDetails = await getRetellAgent(apiKey, retellAgent.agent_id);
+      
+      // Extract LLM info if available
+      let greetingMessage = null;
+      let personality = null;
+      
+      if (agentDetails.response_engine?.type === 'retell-llm' && agentDetails.response_engine?.llm_id) {
+        try {
+          const llmResponse = await fetch(`${RETELL_BASE_URL}/get-retell-llm/${agentDetails.response_engine.llm_id}`, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${apiKey}` },
+          });
+          if (llmResponse.ok) {
+            const llmData = await llmResponse.json();
+            greetingMessage = llmData.begin_message || null;
+            personality = llmData.general_prompt || null;
+          }
+        } catch (e) {
+          console.log(`Could not fetch LLM details for agent ${retellAgent.agent_id}`);
+        }
+      }
+
+      const agentData = {
+        user_id: userId,
+        retell_agent_id: retellAgent.agent_id,
+        name: agentDetails.agent_name || retellAgent.agent_name || `Agent ${retellAgent.agent_id.slice(0, 8)}`,
+        voice_id: agentDetails.voice_id || null,
+        voice_model: agentDetails.voice_model || null,
+        voice_temperature: agentDetails.voice_temperature ?? null,
+        voice_speed: agentDetails.voice_speed ?? null,
+        volume: agentDetails.volume ?? null,
+        responsiveness: agentDetails.responsiveness ?? null,
+        interruption_sensitivity: agentDetails.interruption_sensitivity ?? null,
+        enable_backchannel: agentDetails.enable_backchannel ?? false,
+        backchannel_frequency: agentDetails.backchannel_frequency ?? null,
+        ambient_sound: agentDetails.ambient_sound || null,
+        ambient_sound_volume: agentDetails.ambient_sound_volume ?? null,
+        language: agentDetails.language || 'en-US',
+        enable_voicemail_detection: agentDetails.enable_voicemail_detection ?? false,
+        voicemail_message: agentDetails.voicemail_message || null,
+        voicemail_detection_timeout_ms: agentDetails.voicemail_detection_timeout_ms ?? null,
+        max_call_duration_ms: agentDetails.max_call_duration_ms ?? null,
+        end_call_after_silence_ms: agentDetails.end_call_after_silence_ms ?? null,
+        begin_message_delay_ms: agentDetails.begin_message_delay_ms ?? null,
+        normalize_for_speech: agentDetails.normalize_for_speech ?? true,
+        boosted_keywords: agentDetails.boosted_keywords || null,
+        reminder_trigger_ms: agentDetails.reminder_trigger_ms ?? null,
+        reminder_max_count: agentDetails.reminder_max_count ?? null,
+        greeting_message: greetingMessage,
+        personality: personality,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingRetellIds.has(retellAgent.agent_id)) {
+        // Update existing agent
+        const existing = existingByRetellId.get(retellAgent.agent_id);
+        const { error } = await supabase
+          .from("ai_agents")
+          .update(agentData)
+          .eq("id", existing.id);
+
+        if (error) {
+          console.error(`Failed to update agent ${retellAgent.agent_id}:`, error);
+          skipped++;
+        } else {
+          updated++;
+          console.log(`Updated agent: ${agentData.name}`);
+        }
+      } else {
+        // Insert new agent
+        const { error } = await supabase
+          .from("ai_agents")
+          .insert(agentData);
+
+        if (error) {
+          console.error(`Failed to insert agent ${retellAgent.agent_id}:`, error);
+          skipped++;
+        } else {
+          synced++;
+          console.log(`Synced new agent: ${agentData.name}`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error processing agent ${retellAgent.agent_id}:`, err);
+      skipped++;
+    }
+  }
+
+  console.log(`Agent sync complete: ${synced} new, ${updated} updated, ${skipped} skipped`);
+
+  return {
+    success: true,
+    synced,
+    updated,
+    skipped,
+    total: agents.length,
+    message: `Synced ${synced} new agents, updated ${updated} existing agents`,
   };
 }
