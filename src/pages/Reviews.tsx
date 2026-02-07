@@ -2,15 +2,18 @@ import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, MessageSquare, RefreshCw, CheckCircle2, Clock, Sparkles, Loader2 } from "lucide-react";
+import { Star, MessageSquare, RefreshCw, CheckCircle2, Clock, Sparkles, Loader2, Unlink } from "lucide-react";
 import { useReviews } from "@/hooks/useReviews";
+import { useGoogleBusinessAuth } from "@/hooks/useGoogleBusinessAuth";
 
 const Reviews = () => {
   const { reviews, loading, respondToReview } = useReviews();
+  const { isConnected, isLoading: authLoading, connectGoogle, disconnectGoogle, businessName } = useGoogleBusinessAuth();
   const [filter, setFilter] = useState<"all" | "pending" | "responded">("all");
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const filteredReviews = reviews.filter((review) => {
     if (filter === "all") return true;
@@ -45,7 +48,13 @@ const Reviews = () => {
     return date.toLocaleDateString();
   };
 
-  if (loading) {
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    await disconnectGoogle();
+    setDisconnecting(false);
+  };
+
+  if (loading || authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -65,14 +74,33 @@ const Reviews = () => {
             <p className="text-muted-foreground">Manage and respond to customer reviews</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline">
-              <RefreshCw className="w-4 h-4" />
-              Sync Reviews
-            </Button>
-            <Button variant="hero">
-              <Sparkles className="w-4 h-4" />
-              Auto-Respond All
-            </Button>
+            {isConnected ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  <span className="text-sm text-success font-medium">
+                    {businessName || 'Connected'}
+                  </span>
+                </div>
+                <Button variant="outline" disabled={disconnecting} onClick={handleDisconnect}>
+                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlink className="w-4 h-4" />}
+                  Disconnect
+                </Button>
+                <Button variant="outline">
+                  <RefreshCw className="w-4 h-4" />
+                  Sync Reviews
+                </Button>
+                <Button variant="hero">
+                  <Sparkles className="w-4 h-4" />
+                  Auto-Respond All
+                </Button>
+              </>
+            ) : (
+              <Button variant="hero" onClick={connectGoogle}>
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                Connect Google
+              </Button>
+            )}
           </div>
         </div>
 
@@ -138,11 +166,20 @@ const Reviews = () => {
         {filteredReviews.length === 0 ? (
           <div className="glass rounded-2xl p-12 text-center">
             <Star className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Reviews Yet</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {isConnected ? 'No Reviews Yet' : 'Connect Google to Get Started'}
+            </h3>
             <p className="text-muted-foreground mb-4">
-              Connect your Google Business Profile to start managing reviews
+              {isConnected 
+                ? 'Reviews from your Google Business Profile will appear here'
+                : 'Connect your Google Business Profile to start managing reviews'}
             </p>
-            <Button variant="hero">Connect Google</Button>
+            {!isConnected && (
+              <Button variant="hero" onClick={connectGoogle}>
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                Connect Google
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

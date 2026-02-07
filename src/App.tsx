@@ -15,6 +15,7 @@ import Reviews from "./pages/Reviews";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import GoogleCallback from "./pages/auth/GoogleCallback";
 
 // Agent Admin Pages
 import AgentsList from "./pages/agents/AgentsList";
@@ -68,6 +69,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/google/callback" element={<ProtectedRoute><GoogleCallback /></ProtectedRoute>} />
               <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/dashboard/agents" element={<ProtectedRoute><AgentsList /></ProtectedRoute>} />
