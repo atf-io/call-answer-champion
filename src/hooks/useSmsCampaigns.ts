@@ -21,7 +21,7 @@ export interface SmsCampaign {
   name: string;
   description: string | null;
   sms_agent_id: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   lead_sources: string[] | null;
   trigger_type: string | null;
   created_at: string;
@@ -54,9 +54,9 @@ export function useSmsCampaigns() {
     data: campaigns = [],
     isLoading,
     error,
-  } = useQuery<SmsCampaign[]>({
+  } = useQuery({
     queryKey: ['sms-campaigns', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SmsCampaign[]> => {
       const { data, error } = await supabase
         .from('sms_campaigns')
         .select(`
@@ -68,8 +68,8 @@ export function useSmsCampaigns() {
       if (error) throw error;
       return (data || []).map(campaign => ({
         ...campaign,
-        steps: campaign.steps?.sort((a: CampaignStep, b: CampaignStep) => a.step_order - b.step_order),
-      }));
+        steps: (campaign.steps as CampaignStep[] | undefined)?.sort((a, b) => a.step_order - b.step_order),
+      })) as SmsCampaign[];
     },
     enabled: !!user,
   });
@@ -87,8 +87,8 @@ export function useSmsCampaigns() {
     if (error) throw error;
     return {
       ...data,
-      steps: data.steps?.sort((a: CampaignStep, b: CampaignStep) => a.step_order - b.step_order),
-    };
+      steps: (data.steps as CampaignStep[] | undefined)?.sort((a, b) => a.step_order - b.step_order),
+    } as SmsCampaign;
   };
 
   const createMutation = useMutation({
