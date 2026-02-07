@@ -1,19 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { auth } from "@/lib/api";
-
-interface User {
-  id: string | number;
-  username: string;
-  email?: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 async function fetchUser(): Promise<User | null> {
-  const { user } = await auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
 
 async function logout(): Promise<void> {
-  await auth.logout();
+  await supabase.auth.signOut();
 }
 
 export function useAuth() {
