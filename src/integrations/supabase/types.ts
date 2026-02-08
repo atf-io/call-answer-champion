@@ -1247,9 +1247,12 @@ export type Database = {
           id: string
           is_follow_up: boolean | null
           is_greeting: boolean | null
+          max_retries: number | null
           metadata: Json | null
+          next_retry_at: string | null
           response_time_ms: number | null
           retell_message_id: string | null
+          retry_count: number | null
           sender_type: string
           tokens_used: number | null
         }
@@ -1263,9 +1266,12 @@ export type Database = {
           id?: string
           is_follow_up?: boolean | null
           is_greeting?: boolean | null
+          max_retries?: number | null
           metadata?: Json | null
+          next_retry_at?: string | null
           response_time_ms?: number | null
           retell_message_id?: string | null
+          retry_count?: number | null
           sender_type: string
           tokens_used?: number | null
         }
@@ -1279,9 +1285,12 @@ export type Database = {
           id?: string
           is_follow_up?: boolean | null
           is_greeting?: boolean | null
+          max_retries?: number | null
           metadata?: Json | null
+          next_retry_at?: string | null
           response_time_ms?: number | null
           retell_message_id?: string | null
+          retry_count?: number | null
           sender_type?: string
           tokens_used?: number | null
         }
