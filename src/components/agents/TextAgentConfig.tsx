@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Settings2, MessageSquare, AlertTriangle, Clock } from "lucide-react";
+import VariableInserter from "@/components/shared/VariableInserter";
 
 export interface TextAgentFormData {
   name: string;
@@ -201,7 +203,27 @@ export const TextAgentConfig = ({
         {/* Prompt Tab */}
         <TabsContent value="prompt" className="space-y-4 mt-0">
           <div className="space-y-2">
-            <Label htmlFor="text-prompt">System Prompt</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="text-prompt">System Prompt</Label>
+              <VariableInserter 
+                onInsert={(variable) => {
+                  const textarea = document.getElementById('text-prompt') as HTMLTextAreaElement;
+                  if (textarea) {
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const newValue = formData.prompt.substring(0, start) + variable + formData.prompt.substring(end);
+                    onChange({ ...formData, prompt: newValue });
+                    // Restore cursor position after React re-render
+                    setTimeout(() => {
+                      textarea.focus();
+                      textarea.setSelectionRange(start + variable.length, start + variable.length);
+                    }, 0);
+                  }
+                }}
+                compact
+                variant="ghost"
+              />
+            </div>
             <Textarea
               id="text-prompt"
               value={formData.prompt}
@@ -210,7 +232,7 @@ export const TextAgentConfig = ({
               className="min-h-[280px] font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Instructions that define how the agent behaves. Include your business context, services, and response guidelines.
+              Instructions that define how the agent behaves. Use variables like {"{{first_name}}"} to personalize responses.
             </p>
           </div>
         </TabsContent>
