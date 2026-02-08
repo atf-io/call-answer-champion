@@ -31,6 +31,8 @@ const SmsSimulator = () => {
   const [isSending, setIsSending] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [isLocalMode, setIsLocalMode] = useState(false);
+  const [leadName, setLeadName] = useState("John");
+  const [serviceType, setServiceType] = useState("HVAC repair");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,9 +69,16 @@ const SmsSimulator = () => {
       
       // Send greeting if available
       if (selectedAgent?.greeting_message) {
+        const greeting = selectedAgent.greeting_message
+          .replace(/\{lead_name\}/gi, leadName)
+          .replace(/\{customer_name\}/gi, leadName)
+          .replace(/\{name\}/gi, leadName)
+          .replace(/\{service\}/gi, serviceType)
+          .replace(/\{service_type\}/gi, serviceType)
+          .replace(/\{[^}]+\}/g, "[Customer]");
         setMessages([{
           role: "agent",
-          content: selectedAgent.greeting_message.replace(/\{[^}]+\}/g, "[Customer]"),
+          content: greeting,
           timestamp: new Date()
         }]);
       }
@@ -106,7 +115,7 @@ const SmsSimulator = () => {
     } finally {
       setIsStarting(false);
     }
-  }, [selectedAgent, isSpeedToLeadAgent, retell, toast]);
+  }, [selectedAgent, isSpeedToLeadAgent, retell, toast, leadName, serviceType]);
 
   const sendLocalMessage = useCallback(async (userMessage: string) => {
     if (!selectedAgent) return;
@@ -117,15 +126,17 @@ const SmsSimulator = () => {
       content: msg.content
     }));
     
-    // Build the system prompt from agent config
-    const systemPrompt = selectedAgent.prompt || 
+    // Build the system prompt from agent config with lead context
+    const basePrompt = selectedAgent.prompt || 
       `You are a helpful customer service agent for a home services business. Your personality is: ${selectedAgent.personality || "friendly and professional"}. Keep responses concise and helpful.`;
+    
+    const contextPrompt = `${basePrompt}\n\nCurrent lead information:\n- Lead Name: ${leadName}\n- Service Requested: ${serviceType}\n\nAddress the customer by their name when appropriate.`;
     
     try {
       const { data, error } = await supabase.functions.invoke("sms-simulator", {
         body: {
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: contextPrompt },
             ...conversationHistory,
             { role: "user", content: userMessage }
           ]
@@ -145,7 +156,7 @@ const SmsSimulator = () => {
         timestamp: new Date() 
       }]);
     }
-  }, [selectedAgent, messages]);
+  }, [selectedAgent, messages, leadName, serviceType]);
 
   const sendMessage = useCallback(async () => {
     if (!chatId || !inputMessage.trim()) return;
@@ -263,7 +274,7 @@ const SmsSimulator = () => {
                   setSelectedAgentId(val);
                 }}
               >
-                <SelectTrigger className="w-64" data-testid="select-chat-agent">
+                <SelectTrigger className="w-48" data-testid="select-chat-agent">
                   <SelectValue placeholder="Select an agent" />
                 </SelectTrigger>
                 <SelectContent>
@@ -276,6 +287,22 @@ const SmsSimulator = () => {
                   ))}
                 </SelectContent>
               </Select>
+
+              <Input
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+                placeholder="Lead name"
+                className="w-32"
+                disabled={!!chatId}
+              />
+              
+              <Input
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+                placeholder="Service type"
+                className="w-40"
+                disabled={!!chatId}
+              />
 
               {selectedAgentId && !chatId && (
                 <Button
