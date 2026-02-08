@@ -147,6 +147,7 @@ export type Database = {
           name: string
           normalize_for_speech: boolean | null
           personality: string | null
+          prompt: string | null
           reminder_max_count: number | null
           reminder_trigger_ms: number | null
           responsiveness: number | null
@@ -187,6 +188,7 @@ export type Database = {
           name: string
           normalize_for_speech?: boolean | null
           personality?: string | null
+          prompt?: string | null
           reminder_max_count?: number | null
           reminder_trigger_ms?: number | null
           responsiveness?: number | null
@@ -227,6 +229,7 @@ export type Database = {
           name?: string
           normalize_for_speech?: boolean | null
           personality?: string | null
+          prompt?: string | null
           reminder_max_count?: number | null
           reminder_trigger_ms?: number | null
           responsiveness?: number | null

@@ -10,6 +10,7 @@ export interface Agent {
   voice_type: string;
   personality: string;
   greeting_message: string;
+  prompt: string | null;
   schedule_start: string;
   schedule_end: string;
   schedule_days: string[];
@@ -48,6 +49,7 @@ export interface CreateAgentData {
   voice_type?: string;
   personality?: string;
   greeting_message?: string;
+  prompt?: string;
   schedule_start?: string;
   schedule_end?: string;
   schedule_days?: string[];
@@ -83,6 +85,7 @@ function mapAgentFromDb(data: any): Agent {
     voice_type: data.voice_type ?? 'professional',
     personality: data.personality ?? '',
     greeting_message: data.greeting_message ?? '',
+    prompt: data.prompt ?? null,
     schedule_start: data.schedule_start ?? '09:00',
     schedule_end: data.schedule_end ?? '17:00',
     schedule_days: data.schedule_days ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
