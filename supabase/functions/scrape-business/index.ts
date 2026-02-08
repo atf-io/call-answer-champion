@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Use extract format with JSON schema for structured data extraction
     const extractionResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -130,8 +131,8 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: [{
-          type: 'json',
+        formats: ['extract'],
+        extract: {
           schema: {
             type: 'object',
             properties: {
@@ -369,9 +370,11 @@ Deno.serve(async (req) => {
                 description: 'All social media and review profile URLs'
               }
             }
-          }
-        }],
+          },
+          prompt: 'Extract all business information from this website including: company name, description, contact details (phone, email, address), business hours, service areas, all services offered, brands they work with or sell, certifications, licenses, pricing information, financing options, promotions, discounts, FAQs, and social media links. Be thorough and extract every piece of business information available.'
+        },
         onlyMainContent: false,
+        waitFor: 3000, // Wait for JS to render
       }),
     });
 
@@ -379,11 +382,14 @@ Deno.serve(async (req) => {
 
     if (!extractionResponse.ok) {
       console.error('Firecrawl extraction API error:', extractionData);
+    } else {
+      console.log('Firecrawl extraction successful, fields extracted:', Object.keys(extractionData.data?.extract || extractionData.extract || {}).length);
     }
 
     const branding = brandingData.data?.branding || brandingData.branding || {};
     const metadata = brandingData.data?.metadata || brandingData.metadata || {};
-    const extractedJson = extractionData.data?.json || extractionData.json || {};
+    // Extract format returns data in 'extract' field, not 'json'
+    const extractedJson = extractionData.data?.extract || extractionData.extract || extractionData.data?.json || extractionData.json || {};
 
     const businessData = {
       success: true,
