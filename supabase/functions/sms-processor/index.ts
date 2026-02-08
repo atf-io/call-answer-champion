@@ -14,17 +14,18 @@ function renderTemplate(template: string, variables: Record<string, string>): st
   return result;
 }
 
-// Send SMS via Retell API
+// Send SMS via Retell API using the v2/send-text endpoint
 async function sendSmsViaRetell(
   fromNumber: string,
   toNumber: string,
   message: string,
   retellApiKey: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     console.log(`[sms-processor] Sending SMS from ${fromNumber} to ${toNumber}`);
     
-    const response = await fetch('https://api.retellai.com/send-message', {
+    // Use v2/send-text for sending messages in campaign sequences
+    const response = await fetch('https://api.retellai.com/v2/send-text', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${retellApiKey}`,
@@ -33,18 +34,19 @@ async function sendSmsViaRetell(
       body: JSON.stringify({
         from_number: fromNumber,
         to_number: toNumber,
-        message: message,
+        text: message,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[sms-processor] Retell SMS error:', response.status, errorText);
-      return { success: false, error: `Retell API error: ${response.status}` };
+      return { success: false, error: `Retell API error: ${response.status} - ${errorText}` };
     }
 
-    console.log('[sms-processor] SMS sent successfully');
-    return { success: true };
+    const result = await response.json();
+    console.log('[sms-processor] SMS sent successfully:', result);
+    return { success: true, messageId: result.message_id };
   } catch (error) {
     console.error('[sms-processor] Failed to send SMS:', error);
     return { success: false, error: String(error) };
@@ -63,8 +65,36 @@ async function getUserFromNumber(supabase: SupabaseClient, userId: string): Prom
   return phoneNumbers?.[0]?.phone_number || null;
 }
 
+// Mark enrollment as no_response if no reply after all steps
+async function checkAndMarkNoResponse(
+  supabase: SupabaseClient,
+  conversationId: string,
+  messageCount: number
+): Promise<void> {
+  // If campaign completed and lead never replied (only agent messages)
+  const { data: messages } = await supabase
+    .from('sms_messages')
+    .select('sender_type')
+    .eq('conversation_id', conversationId);
+  
+  const hasLeadReply = messages?.some(m => m.sender_type === 'lead');
+  
+  if (!hasLeadReply && messageCount > 0) {
+    await supabase
+      .from('sms_conversations')
+      .update({ 
+        conversion_status: 'no_response',
+        status: 'ended',
+        ended_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
+    console.log('[sms-processor] Marked conversation as no_response:', conversationId);
+  }
+}
+
 Deno.serve(async (req) => {
-  console.log('[sms-processor] Starting scheduled processing');
+  const startTime = Date.now();
+  console.log('[sms-processor] Starting scheduled processing at', new Date().toISOString());
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -91,7 +121,7 @@ Deno.serve(async (req) => {
 
     if (enrollError) {
       console.error('[sms-processor] Error fetching enrollments:', enrollError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch enrollments' }), {
+      return new Response(JSON.stringify({ error: 'Failed to fetch enrollments', details: enrollError }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -99,7 +129,13 @@ Deno.serve(async (req) => {
 
     console.log(`[sms-processor] Found ${enrollments?.length || 0} enrollments to process`);
 
-    const results: { enrollmentId: string; status: string; smsSent?: boolean; error?: string }[] = [];
+    const results: { 
+      enrollmentId: string; 
+      status: string; 
+      smsSent?: boolean; 
+      messageId?: string;
+      error?: string;
+    }[] = [];
 
     for (const enrollment of enrollments || []) {
       try {
@@ -111,10 +147,18 @@ Deno.serve(async (req) => {
           .select('*')
           .eq('campaign_id', enrollment.campaign_id)
           .eq('step_order', enrollment.current_step_order)
-          .single();
+          .maybeSingle();
 
         if (!step) {
           console.log(`[sms-processor] No step found for order ${enrollment.current_step_order}, marking completed`);
+          
+          // Check if lead ever responded
+          await checkAndMarkNoResponse(
+            supabase, 
+            enrollment.conversation_id, 
+            enrollment.sms_conversations.message_count || 0
+          );
+          
           await supabase
             .from('sms_campaign_enrollments')
             .update({
@@ -137,14 +181,14 @@ Deno.serve(async (req) => {
           .from('profiles')
           .select('business_name')
           .eq('user_id', enrollment.user_id)
-          .single();
+          .maybeSingle();
 
         // Get SMS agent name
         const { data: agent } = await supabase
           .from('sms_agents')
           .select('name')
           .eq('id', enrollment.sms_conversations.sms_agent_id)
-          .single();
+          .maybeSingle();
 
         // Build template variables
         const firstName = enrollment.lead_name?.split(' ')[0] || 'there';
@@ -161,20 +205,24 @@ Deno.serve(async (req) => {
         console.log(`[sms-processor] Sending message: ${messageContent.substring(0, 50)}...`);
 
         // Record the message
-        await supabase.from('sms_messages').insert({
+        const { data: msgRecord } = await supabase.from('sms_messages').insert({
           conversation_id: enrollment.conversation_id,
           sender_type: 'agent',
           content: messageContent,
           is_follow_up: enrollment.current_step_order > 1,
+          delivery_status: 'pending',
           metadata: {
             campaign_id: enrollment.campaign_id,
             step_order: enrollment.current_step_order,
             enrollment_id: enrollment.id,
           },
-        });
+        }).select().single();
 
         // Send SMS via Retell
         let smsSent = false;
+        let messageId: string | undefined;
+        let deliveryError: string | undefined;
+        
         if (canSendSms) {
           const smsResult = await sendSmsViaRetell(
             fromNumber!, 
@@ -183,11 +231,31 @@ Deno.serve(async (req) => {
             retellApiKey!
           );
           smsSent = smsResult.success;
+          messageId = smsResult.messageId;
+          deliveryError = smsResult.error;
+          
+          // Update message delivery status
+          if (msgRecord) {
+            await supabase.from('sms_messages').update({
+              delivery_status: smsSent ? 'sent' : 'failed',
+              delivery_error: deliveryError,
+              delivered_at: smsSent ? new Date().toISOString() : null,
+              retell_message_id: messageId,
+            }).eq('id', msgRecord.id);
+          }
+          
           if (!smsResult.success) {
             console.error('[sms-processor] SMS delivery failed:', smsResult.error);
           }
         } else {
           console.log('[sms-processor] SMS delivery not available:', { hasFromNumber: !!fromNumber, hasRetellKey: !!retellApiKey });
+          // Update as pending since we couldn't attempt delivery
+          if (msgRecord) {
+            await supabase.from('sms_messages').update({
+              delivery_status: 'failed',
+              delivery_error: 'No phone number or Retell API key configured',
+            }).eq('id', msgRecord.id);
+          }
         }
 
         // Update conversation
@@ -206,7 +274,7 @@ Deno.serve(async (req) => {
           .select('*')
           .eq('campaign_id', enrollment.campaign_id)
           .eq('step_order', nextStepOrder)
-          .single();
+          .maybeSingle();
 
         if (nextStep) {
           // Calculate next message time
@@ -222,9 +290,15 @@ Deno.serve(async (req) => {
             .eq('id', enrollment.id);
 
           console.log(`[sms-processor] Advanced to step ${nextStepOrder}, next message at ${nextMessageAt.toISOString()}`);
-          results.push({ enrollmentId: enrollment.id, status: 'advanced', smsSent });
+          results.push({ enrollmentId: enrollment.id, status: 'advanced', smsSent, messageId });
         } else {
           // No more steps, complete the enrollment
+          await checkAndMarkNoResponse(
+            supabase, 
+            enrollment.conversation_id, 
+            (enrollment.sms_conversations.message_count || 0) + 1
+          );
+          
           await supabase
             .from('sms_campaign_enrollments')
             .update({
@@ -235,7 +309,7 @@ Deno.serve(async (req) => {
             .eq('id', enrollment.id);
 
           console.log(`[sms-processor] Enrollment ${enrollment.id} completed`);
-          results.push({ enrollmentId: enrollment.id, status: 'completed', smsSent });
+          results.push({ enrollmentId: enrollment.id, status: 'completed', smsSent, messageId });
         }
 
         // Update contact last_contacted_at
@@ -252,9 +326,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`[sms-processor] Completed processing in ${duration}ms`);
+
     return new Response(JSON.stringify({
       success: true,
       processed: results.length,
+      duration_ms: duration,
       results,
     }), {
       status: 200,
