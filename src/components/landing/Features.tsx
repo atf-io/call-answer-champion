@@ -56,7 +56,7 @@ const Features = () => {
             <span className="text-sm text-muted-foreground">Powerful Features</span>
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-            <span className="text-gradient">Everything</span> you need
+            <span className="text-foreground">Everything</span> you need
           </h2>
           <p className="text-lg text-muted-foreground">
             From AI-powered calls to automated review responses, we've got you covered.

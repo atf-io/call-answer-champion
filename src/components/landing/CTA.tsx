@@ -17,7 +17,7 @@ const CTA = () => {
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-            Ready to transform your <span className="text-gradient">customer experience</span>?
+            Ready to transform your <span className="text-foreground">customer experience</span>?
           </h2>
           <p className="text-lg text-muted-foreground mb-10">
             Join hundreds of businesses using AI to handle calls and reviews. 
