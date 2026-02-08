@@ -135,6 +135,7 @@ export type Database = {
           begin_message_delay_ms: number | null
           boosted_keywords: string[] | null
           created_at: string
+          crm_config: Json | null
           enable_backchannel: boolean | null
           enable_voicemail_detection: boolean | null
           end_call_after_silence_ms: number | null
@@ -176,6 +177,7 @@ export type Database = {
           begin_message_delay_ms?: number | null
           boosted_keywords?: string[] | null
           created_at?: string
+          crm_config?: Json | null
           enable_backchannel?: boolean | null
           enable_voicemail_detection?: boolean | null
           end_call_after_silence_ms?: number | null
@@ -217,6 +219,7 @@ export type Database = {
           begin_message_delay_ms?: number | null
           boosted_keywords?: string[] | null
           created_at?: string
+          crm_config?: Json | null
           enable_backchannel?: boolean | null
           enable_voicemail_detection?: boolean | null
           end_call_after_silence_ms?: number | null
