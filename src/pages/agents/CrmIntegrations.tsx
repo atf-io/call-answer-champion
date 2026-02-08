@@ -54,9 +54,11 @@ export default function CrmIntegrations() {
   const handleConnect = async (crmType: CrmType) => {
     setConnectingCrm(crmType);
     try {
+      // Use published URL for OAuth redirect (must be registered in CRM app settings)
+      const publishedUrl = 'https://call-answer-champion.lovable.app';
       await initiateOAuth.mutateAsync({
         crmType,
-        redirectUri: `${window.location.origin}/dashboard/agents/crm-integrations`
+        redirectUri: `${publishedUrl}/dashboard/agents/crm-integrations`
       });
     } finally {
       setConnectingCrm(null);
