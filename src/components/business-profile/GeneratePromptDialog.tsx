@@ -7,13 +7,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Check, MessageSquare, Phone } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Copy, Check, MessageSquare, Phone, Save } from "lucide-react";
 import { BusinessProfile } from "@/hooks/useBusinessProfile";
 import { generateAgentPrompt, AgentType } from "@/lib/generateAgentPrompt";
+import { useSmsAgents } from "@/hooks/useSmsAgents";
 import { toast } from "sonner";
 
 interface GeneratePromptDialogProps {
@@ -27,6 +35,9 @@ export function GeneratePromptDialog({ open, onOpenChange, profile }: GeneratePr
   const [includeCalendar, setIncludeCalendar] = useState(true);
   const [includeTransfer, setIncludeTransfer] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  
+  const { agents, updateSmsAgent, isUpdating } = useSmsAgents();
 
   const generatedPrompt = generateAgentPrompt({
     agentType,
@@ -43,6 +54,20 @@ export function GeneratePromptDialog({ open, onOpenChange, profile }: GeneratePr
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy prompt");
+    }
+  };
+
+  const handleSaveToAgent = async () => {
+    if (!selectedAgentId) {
+      toast.error("Please select an agent first");
+      return;
+    }
+    
+    try {
+      await updateSmsAgent(selectedAgentId, { prompt: generatedPrompt });
+      toast.success("Prompt saved to agent!");
+    } catch {
+      toast.error("Failed to save prompt to agent");
     }
   };
 
@@ -100,6 +125,34 @@ export function GeneratePromptDialog({ open, onOpenChange, profile }: GeneratePr
               className="h-full min-h-[400px] font-mono text-xs resize-none"
             />
           </div>
+
+          {agentType === "sms" && agents.length > 0 && (
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <Label htmlFor="agent-select" className="text-sm whitespace-nowrap">
+                Save to:
+              </Label>
+              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger id="agent-select" className="flex-1">
+                  <SelectValue placeholder="Select an SMS agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={handleSaveToAgent} 
+                disabled={!selectedAgentId || isUpdating}
+                size="sm"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isUpdating ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
