@@ -20,7 +20,7 @@ const Hero = () => {
 
           {/* Headline */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mb-8 animate-slide-up">
-            <span className="text-gradient animate-gradient">AI customer service</span>
+            <span className="text-foreground">AI customer service</span>
             <br />
             <span className="text-foreground">agents</span>
           </h1>
