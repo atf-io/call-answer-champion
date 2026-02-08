@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { 
   Sparkles, Globe, Loader2, Save, Building2, Phone, Mail, MapPin, Clock, 
   Shield, Wrench, DollarSign, MessageSquare, AlertTriangle, Truck, FileText,
-  CheckCircle
+  CheckCircle, Wand2
 } from "lucide-react";
 import { useBusinessProfile, BusinessProfile } from "@/hooks/useBusinessProfile";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ProfileSection } from "@/components/business-profile/ProfileSection";
 import { EditableField } from "@/components/business-profile/EditableField";
 import { EditableTagList } from "@/components/business-profile/EditableTagList";
+import { GeneratePromptDialog } from "@/components/business-profile/GeneratePromptDialog";
 
 interface ScrapedBusinessData {
   // Identity
@@ -93,6 +94,7 @@ const KnowledgeBase = () => {
   const [isScrapingBusiness, setIsScrapingBusiness] = useState(false);
   const [localProfile, setLocalProfile] = useState<Partial<BusinessProfile>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [showPromptDialog, setShowPromptDialog] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -282,9 +284,14 @@ const KnowledgeBase = () => {
           </CardContent>
         </Card>
 
-        {/* Save Button */}
-        {hasChanges && (
-          <div className="flex justify-end">
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center">
+          <Button variant="outline" onClick={() => setShowPromptDialog(true)}>
+            <Wand2 className="w-4 h-4 mr-2" />
+            Generate AI Prompt
+          </Button>
+          
+          {hasChanges && (
             <Button onClick={handleSave} disabled={isUpdating}>
               {isUpdating ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</>
@@ -292,8 +299,8 @@ const KnowledgeBase = () => {
                 <><Save className="w-4 h-4 mr-2" /> Save All Changes</>
               )}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Profile Sections */}
         <Tabs defaultValue="identity" className="space-y-6">
@@ -787,6 +794,13 @@ const KnowledgeBase = () => {
           </Card>
         )}
       </div>
+
+      {/* Generate Prompt Dialog */}
+      <GeneratePromptDialog
+        open={showPromptDialog}
+        onOpenChange={setShowPromptDialog}
+        profile={localProfile}
+      />
     </AgentLayout>
   );
 };
