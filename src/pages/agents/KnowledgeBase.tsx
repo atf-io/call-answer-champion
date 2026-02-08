@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useBusinessProfile, BusinessProfile } from "@/hooks/useBusinessProfile";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProfileSection } from "@/components/business-profile/ProfileSection";
 import { EditableField } from "@/components/business-profile/EditableField";
@@ -76,8 +76,17 @@ const KnowledgeBase = () => {
     if (!businessUrl.trim()) return;
     setIsScrapingBusiness(true);
     try {
-      const result = await api.post<{ success: boolean; data: ScrapedBusinessData; error?: string }>('/api/scrape-business', { url: businessUrl.trim() });
-      if (result.success && result.data) {
+      const { data: result, error } = await supabase.functions.invoke<{ success: boolean; data: ScrapedBusinessData; error?: string }>('scrape-business', {
+        body: { url: businessUrl.trim() }
+      });
+      
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error(error.message || 'Failed to scrape website');
+        return;
+      }
+      
+      if (result?.success && result.data) {
         // Map scraped data to profile fields
         const updates: Partial<BusinessProfile> = {
           businessName: result.data.business_name || localProfile.businessName,
