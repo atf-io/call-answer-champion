@@ -6,11 +6,12 @@ const corsHeaders = {
 };
 
 interface SyncRequest {
-  action: 'sync_message' | 'sync_call' | 'sync_contact' | 'batch_sync';
+  action: 'sync_message' | 'sync_call' | 'sync_contact' | 'batch_sync' | 'fetch_schema';
   entity_type?: 'sms_message' | 'call_log' | 'contact';
   entity_id?: string;
   entity_ids?: string[];
   crm_type?: 'jobber' | 'servicetitan' | 'housecall_pro';
+  connection_id?: string;
 }
 
 interface CrmConnection {
@@ -188,6 +189,140 @@ function formatCallNote(call: { caller_number: string; duration_seconds: number;
   return note;
 }
 
+// Fetch Jobber schema data (products/services, custom fields, team members)
+async function fetchJobberSchema(accessToken: string): Promise<{
+  productsOrServices: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    category: string;
+    defaultUnitCost: number;
+    durationMinutes: number | null;
+  }>;
+  customFields: Array<{
+    id: string;
+    label: string;
+    fieldType: string;
+    valueType: string;
+  }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    isActive: boolean;
+  }>;
+}> {
+  // Demo mode - return mock data
+  if (!accessToken || accessToken.startsWith('demo_')) {
+    console.log('[DEMO] Returning mock Jobber schema data');
+    return {
+      productsOrServices: [
+        { id: 'demo_service_1', name: 'HVAC Service Call', description: 'Standard HVAC service visit', category: 'SERVICE', defaultUnitCost: 150, durationMinutes: 60 },
+        { id: 'demo_service_2', name: 'HVAC Maintenance', description: 'Preventative maintenance', category: 'SERVICE', defaultUnitCost: 199, durationMinutes: 90 },
+        { id: 'demo_service_3', name: 'AC Installation', description: 'New AC unit installation', category: 'SERVICE', defaultUnitCost: 3500, durationMinutes: 480 },
+        { id: 'demo_service_4', name: 'Furnace Repair', description: 'Furnace diagnostics and repair', category: 'SERVICE', defaultUnitCost: 250, durationMinutes: 120 },
+        { id: 'demo_product_1', name: 'Air Filter (Standard)', description: '20x25x1 MERV 11', category: 'PRODUCT', defaultUnitCost: 25, durationMinutes: null },
+        { id: 'demo_product_2', name: 'Thermostat (Smart)', description: 'WiFi-enabled thermostat', category: 'PRODUCT', defaultUnitCost: 199, durationMinutes: null },
+      ],
+      customFields: [
+        { id: 'demo_cf_1', label: 'Equipment Type', fieldType: 'DROPDOWN', valueType: 'STRING' },
+        { id: 'demo_cf_2', label: 'Lead Source', fieldType: 'DROPDOWN', valueType: 'STRING' },
+        { id: 'demo_cf_3', label: 'Property Type', fieldType: 'DROPDOWN', valueType: 'STRING' },
+      ],
+      teamMembers: [
+        { id: 'demo_tm_1', name: 'John Smith', email: 'john@example.com', isActive: true },
+        { id: 'demo_tm_2', name: 'Sarah Johnson', email: 'sarah@example.com', isActive: true },
+        { id: 'demo_tm_3', name: 'Mike Williams', email: 'mike@example.com', isActive: true },
+        { id: 'demo_tm_4', name: 'Emily Davis', email: 'emily@example.com', isActive: false },
+      ],
+    };
+  }
+
+  try {
+    // Fetch Products/Services from Jobber GraphQL API
+    const query = `
+      query GetSchema {
+        productsAndServices(first: 100) {
+          nodes {
+            id
+            name
+            description
+            category
+            defaultUnitCost
+            durationMinutes
+          }
+        }
+        users(first: 50) {
+          nodes {
+            id
+            name {
+              full
+            }
+            email {
+              raw
+            }
+            isActive
+          }
+        }
+        account {
+          customFields {
+            id
+            label
+            fieldType
+            valueType
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(CRM_ENDPOINTS.jobber.graphql, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+        'X-JOBBER-GRAPHQL-VERSION': '2024-10-15',
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    const result = await response.json();
+
+    if (result.errors) {
+      console.error('Jobber schema fetch errors:', result.errors);
+      // Return empty data on error
+      return { productsOrServices: [], customFields: [], teamMembers: [] };
+    }
+
+    const productsOrServices = (result.data?.productsAndServices?.nodes || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      defaultUnitCost: item.defaultUnitCost || 0,
+      durationMinutes: item.durationMinutes,
+    }));
+
+    const teamMembers = (result.data?.users?.nodes || []).map((user: any) => ({
+      id: user.id,
+      name: user.name?.full || 'Unknown',
+      email: user.email?.raw || null,
+      isActive: user.isActive ?? true,
+    }));
+
+    const customFields = (result.data?.account?.customFields || []).map((field: any) => ({
+      id: field.id,
+      label: field.label,
+      fieldType: field.fieldType,
+      valueType: field.valueType,
+    }));
+
+    return { productsOrServices, customFields, teamMembers };
+  } catch (error) {
+    console.error('Failed to fetch Jobber schema:', error);
+    return { productsOrServices: [], customFields: [], teamMembers: [] };
+  }
+}
+
 // Find or create CRM customer mapping
 async function findOrCreateCustomerMapping(
   supabase: any,
@@ -287,9 +422,41 @@ Deno.serve(async (req) => {
     }
 
     const body: SyncRequest = await req.json();
-    const { action, entity_type, entity_id, entity_ids, crm_type } = body;
+    const { action, entity_type, entity_id, entity_ids, crm_type, connection_id } = body;
 
-    console.log(`CRM Sync: ${action} for user ${user.id}`, { entity_type, entity_id, crm_type });
+    console.log(`CRM Sync: ${action} for user ${user.id}`, { entity_type, entity_id, crm_type, connection_id });
+
+    // Handle fetch_schema action separately
+    if (action === 'fetch_schema') {
+      if (!connection_id) {
+        return new Response(
+          JSON.stringify({ error: 'connection_id is required for fetch_schema' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get the specific connection
+      const { data: connection, error: connError } = await supabase
+        .from('crm_connections')
+        .select('*')
+        .eq('id', connection_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (connError || !connection) {
+        return new Response(
+          JSON.stringify({ error: 'Connection not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const schemaData = await fetchJobberSchema(connection.access_token);
+      
+      return new Response(
+        JSON.stringify(schemaData),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get active CRM connections
     let connectionsQuery = supabase
