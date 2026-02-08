@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MessageSquare,
   RefreshCw,
@@ -57,7 +59,9 @@ const DEFAULT_SYNC_TRIGGERS: SyncTriggers = {
 
 const DEFAULT_SCHEDULING_CONFIG: AgentSchedulingConfig = {
   enabled: false,
+  allowed_products_or_services: [],
   technician_assignment: 'any_available',
+  allowed_technicians: [],
   service_window_hours: 4,
   require_confirmation: true,
   confirmation_message: "Great! I've scheduled your service for {date} at {time}. You'll receive a confirmation shortly.",
@@ -433,10 +437,15 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
 
             {localConfig.scheduling_config.enabled && (
               <div className="space-y-4">
-                {/* Products/Services from Jobber */}
+                {/* Products/Services from Jobber - Multi-select */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Default Product or Service</Label>
+                    <div>
+                      <Label>Products & Services</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Select which services this agent can schedule
+                      </p>
+                    </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -451,36 +460,68 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                     </Button>
                   </div>
                   {isLoadingSchema ? (
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-32 w-full" />
                   ) : productsOrServices.length > 0 ? (
-                    <Select
-                      value={localConfig.scheduling_config.default_product_or_service_id || ''}
-                      onValueChange={(value) => {
-                        const selected = productsOrServices.find(p => p.id === value);
-                        handleSchedulingUpdate({ 
-                          default_product_or_service_id: value,
-                          default_product_or_service_name: selected?.name
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product or service from Jobber" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productsOrServices.map(product => (
-                          <SelectItem key={product.id} value={product.id}>
-                            <div className="flex items-center justify-between w-full gap-2">
-                              <span>{product.name}</span>
-                              {product.durationMinutes && (
-                                <Badge variant="outline" className="text-xs">
-                                  {product.durationMinutes}m
-                                </Badge>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="border rounded-lg">
+                      <ScrollArea className="h-48">
+                        <div className="p-3 space-y-2">
+                          {productsOrServices.map(product => {
+                            const isSelected = localConfig.scheduling_config.allowed_products_or_services.some(
+                              p => p.id === product.id
+                            );
+                            return (
+                              <div
+                                key={product.id}
+                                className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50"
+                              >
+                                <Checkbox
+                                  id={`product-${product.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    const current = localConfig.scheduling_config.allowed_products_or_services;
+                                    if (checked) {
+                                      handleSchedulingUpdate({
+                                        allowed_products_or_services: [
+                                          ...current,
+                                          { id: product.id, name: product.name }
+                                        ]
+                                      });
+                                    } else {
+                                      handleSchedulingUpdate({
+                                        allowed_products_or_services: current.filter(p => p.id !== product.id)
+                                      });
+                                    }
+                                  }}
+                                />
+                                <label 
+                                  htmlFor={`product-${product.id}`}
+                                  className="flex-1 flex items-center justify-between cursor-pointer text-sm"
+                                >
+                                  <span>{product.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {product.category.toLowerCase()}
+                                    </Badge>
+                                    {product.durationMinutes && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {product.durationMinutes}m
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                      {localConfig.scheduling_config.allowed_products_or_services.length > 0 && (
+                        <div className="border-t px-3 py-2 bg-muted/30">
+                          <span className="text-xs text-muted-foreground">
+                            {localConfig.scheduling_config.allowed_products_or_services.length} selected
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <Alert>
                       <Info className="h-4 w-4" />
@@ -489,12 +530,9 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                       </AlertDescription>
                     </Alert>
                   )}
-                  <p className="text-sm text-muted-foreground">
-                    The service type to use when creating jobs in {selectedCrmConfig.name}
-                  </p>
                 </div>
 
-                {/* Team Member / Technician Assignment */}
+                {/* Team Member Assignment */}
                 <div className="space-y-2">
                   <Label>Team Member Assignment</Label>
                   <Select
@@ -509,43 +547,75 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                     <SelectContent>
                       <SelectItem value="any_available">Any Available Team Member</SelectItem>
                       <SelectItem value="round_robin">Round Robin</SelectItem>
-                      <SelectItem value="specific">Specific Team Member</SelectItem>
+                      <SelectItem value="specific">Specific Team Members</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {localConfig.scheduling_config.technician_assignment === 'specific' && (
                   <div className="space-y-2 pl-4">
-                    <Label>Select Team Member</Label>
+                    <Label>Select Team Members</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Choose which team members this agent can assign jobs to
+                    </p>
                     {isLoadingSchema ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : teamMembers.length > 0 ? (
-                      <Select
-                        value={localConfig.scheduling_config.specific_technician_id || ''}
-                        onValueChange={(value) => {
-                          const selected = teamMembers.find(t => t.id === value);
-                          handleSchedulingUpdate({ 
-                            specific_technician_id: value,
-                            specific_technician_name: selected?.name
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select team member" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teamMembers.filter(t => t.isActive).map(member => (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Skeleton className="h-32 w-full" />
+                    ) : teamMembers.filter(t => t.isActive).length > 0 ? (
+                      <div className="border rounded-lg">
+                        <ScrollArea className="h-40">
+                          <div className="p-3 space-y-2">
+                            {teamMembers.filter(t => t.isActive).map(member => {
+                              const isSelected = localConfig.scheduling_config.allowed_technicians.some(
+                                t => t.id === member.id
+                              );
+                              return (
+                                <div
+                                  key={member.id}
+                                  className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50"
+                                >
+                                  <Checkbox
+                                    id={`member-${member.id}`}
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) => {
+                                      const current = localConfig.scheduling_config.allowed_technicians;
+                                      if (checked) {
+                                        handleSchedulingUpdate({
+                                          allowed_technicians: [
+                                            ...current,
+                                            { id: member.id, name: member.name }
+                                          ]
+                                        });
+                                      } else {
+                                        handleSchedulingUpdate({
+                                          allowed_technicians: current.filter(t => t.id !== member.id)
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <label 
+                                    htmlFor={`member-${member.id}`}
+                                    className="flex-1 cursor-pointer text-sm"
+                                  >
+                                    {member.name}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                        {localConfig.scheduling_config.allowed_technicians.length > 0 && (
+                          <div className="border-t px-3 py-2 bg-muted/30">
+                            <span className="text-xs text-muted-foreground">
+                              {localConfig.scheduling_config.allowed_technicians.length} selected
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <Alert>
                         <Info className="h-4 w-4" />
                         <AlertDescription>
-                          No team members found. Click refresh above to reload from Jobber.
+                          No active team members found. Click refresh above to reload from Jobber.
                         </AlertDescription>
                       </Alert>
                     )}
