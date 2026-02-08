@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,11 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Copy, Check, MessageSquare, Phone, Save } from "lucide-react";
+import { Copy, Check, MessageSquare, Phone, Save, Variable } from "lucide-react";
 import { BusinessProfile } from "@/hooks/useBusinessProfile";
 import { generateAgentPrompt, AgentType } from "@/lib/generateAgentPrompt";
 import { useSmsAgents } from "@/hooks/useSmsAgents";
 import { toast } from "sonner";
+import VariableInserter from "@/components/shared/VariableInserter";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GeneratePromptDialogProps {
   open: boolean;
@@ -118,11 +120,32 @@ export function GeneratePromptDialog({ open, onOpenChange, profile }: GeneratePr
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Generated prompt with your business profile data
+              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Variable className="w-3 h-3" />
+                      <span>Variables available</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="max-w-[300px]">
+                    <p className="text-xs">
+                      Template variables like {"{{first_name}}"}, {"{{business_name}}"} are automatically 
+                      replaced with real values during conversations.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Textarea
               value={generatedPrompt}
               readOnly
-              className="h-full min-h-[400px] font-mono text-xs resize-none"
+              className="flex-1 min-h-[400px] font-mono text-xs resize-none"
             />
           </div>
 
