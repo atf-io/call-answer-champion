@@ -466,6 +466,223 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          crm_type: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          refresh_token: string | null
+          sync_settings: Json | null
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          crm_type: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          crm_type?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_contact_mappings: {
+        Row: {
+          contact_id: string
+          created_at: string
+          crm_connection_id: string
+          crm_customer_data: Json | null
+          crm_customer_id: string
+          id: string
+          last_synced_at: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          crm_connection_id: string
+          crm_customer_data?: Json | null
+          crm_customer_id: string
+          id?: string
+          last_synced_at?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          crm_connection_id?: string
+          crm_customer_data?: Json | null
+          crm_customer_id?: string
+          id?: string
+          last_synced_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contact_mappings_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contact_mappings_crm_connection_id_fkey"
+            columns: ["crm_connection_id"]
+            isOneToOne: false
+            referencedRelation: "crm_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_scheduling_config: {
+        Row: {
+          business_units: Json | null
+          created_at: string
+          crm_connection_id: string
+          id: string
+          job_types: Json | null
+          last_synced_at: string | null
+          scheduling_rules: Json | null
+          technicians: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_units?: Json | null
+          created_at?: string
+          crm_connection_id: string
+          id?: string
+          job_types?: Json | null
+          last_synced_at?: string | null
+          scheduling_rules?: Json | null
+          technicians?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_units?: Json | null
+          created_at?: string
+          crm_connection_id?: string
+          id?: string
+          job_types?: Json | null
+          last_synced_at?: string | null
+          scheduling_rules?: Json | null
+          technicians?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_scheduling_config_crm_connection_id_fkey"
+            columns: ["crm_connection_id"]
+            isOneToOne: true
+            referencedRelation: "crm_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_sync_logs: {
+        Row: {
+          created_at: string
+          crm_connection_id: string
+          crm_entity_id: string | null
+          direction: string
+          entity_id: string | null
+          entity_type: string
+          error_message: string | null
+          id: string
+          payload: Json | null
+          status: string
+          sync_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crm_connection_id: string
+          crm_entity_id?: string | null
+          direction: string
+          entity_id?: string | null
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          status?: string
+          sync_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crm_connection_id?: string
+          crm_entity_id?: string | null
+          direction?: string
+          entity_id?: string | null
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          status?: string
+          sync_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sync_logs_crm_connection_id_fkey"
+            columns: ["crm_connection_id"]
+            isOneToOne: false
+            referencedRelation: "crm_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_webhook_secrets: {
+        Row: {
+          created_at: string
+          crm_type: string
+          id: string
+          is_active: boolean | null
+          secret_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crm_type: string
+          id?: string
+          is_active?: boolean | null
+          secret_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crm_type?: string
+          id?: string
+          is_active?: boolean | null
+          secret_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       google_integrations: {
         Row: {
           business_name: string
