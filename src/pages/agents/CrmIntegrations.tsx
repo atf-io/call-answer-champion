@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AgentLayout from '@/components/agents/AgentLayout';
 import { CrmConnectionCard } from '@/components/integrations/CrmConnectionCard';
+import { CrmWebhookConfig } from '@/components/integrations/CrmWebhookConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -276,6 +277,10 @@ export default function CrmIntegrations() {
             </AlertDescription>
           </Alert>
 
+          {/* Webhook Configuration Component */}
+          <CrmWebhookConfig />
+
+          {/* Supported Events Reference */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {CRM_PROVIDERS.map((provider) => {
               const connection = getConnectionByType(provider.id);
