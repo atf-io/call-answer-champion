@@ -97,8 +97,14 @@ const VariableInserter = ({
                           </span>
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-[200px]">
-                        <p className="text-xs">{v.description}</p>
+                      <TooltipContent side="right" className="max-w-[250px]">
+                        <div className="space-y-1.5">
+                          <p className="text-xs">{v.description}</p>
+                          <div className="pt-1 border-t border-border/50">
+                            <p className="text-[10px] text-muted-foreground">Example:</p>
+                            <p className="text-xs font-medium text-primary">{v.example}</p>
+                          </div>
+                        </div>
                       </TooltipContent>
                     </Tooltip>
                   ))}
