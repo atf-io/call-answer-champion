@@ -8,6 +8,7 @@ export interface TemplateVariable {
   value: string;
   description: string;
   source: 'lead' | 'business' | 'conversation' | 'system';
+  example: string;
 }
 
 export interface VariableGroup {
@@ -25,61 +26,61 @@ export const templateVariableGroups: VariableGroup[] = [
     label: "Lead Information",
     description: "Data from incoming lead webhooks",
     variables: [
-      { label: "First Name", value: "{{first_name}}", description: "Lead's first name (parsed from full name)", source: 'lead' },
-      { label: "Last Name", value: "{{last_name}}", description: "Lead's last name (parsed from full name)", source: 'lead' },
-      { label: "Full Name", value: "{{full_name}}", description: "Lead's complete name", source: 'lead' },
-      { label: "Phone", value: "{{phone}}", description: "Lead's phone number", source: 'lead' },
-      { label: "Email", value: "{{email}}", description: "Lead's email address", source: 'lead' },
-      { label: "Lead Source", value: "{{lead_source}}", description: "Where the lead came from (e.g., angi, thumbtack)", source: 'lead' },
+      { label: "First Name", value: "{{first_name}}", description: "Lead's first name (parsed from full name)", source: 'lead', example: "John" },
+      { label: "Last Name", value: "{{last_name}}", description: "Lead's last name (parsed from full name)", source: 'lead', example: "Smith" },
+      { label: "Full Name", value: "{{full_name}}", description: "Lead's complete name", source: 'lead', example: "John Smith" },
+      { label: "Phone", value: "{{phone}}", description: "Lead's phone number", source: 'lead', example: "+1 (555) 123-4567" },
+      { label: "Email", value: "{{email}}", description: "Lead's email address", source: 'lead', example: "john.smith@email.com" },
+      { label: "Lead Source", value: "{{lead_source}}", description: "Where the lead came from (e.g., angi, thumbtack)", source: 'lead', example: "angi" },
     ],
   },
   {
     label: "Service Details",
     description: "Service request information from the lead",
     variables: [
-      { label: "Service Category", value: "{{service_category}}", description: "Type of service requested", source: 'lead' },
-      { label: "Service Description", value: "{{service_description}}", description: "Detailed service request notes", source: 'lead' },
-      { label: "Task Name", value: "{{task_name}}", description: "Specific task or job name", source: 'lead' },
-      { label: "Comments", value: "{{comments}}", description: "Additional notes from the lead", source: 'lead' },
+      { label: "Service Category", value: "{{service_category}}", description: "Type of service requested", source: 'lead', example: "HVAC Repair" },
+      { label: "Service Description", value: "{{service_description}}", description: "Detailed service request notes", source: 'lead', example: "AC unit not cooling properly, making loud noise" },
+      { label: "Task Name", value: "{{task_name}}", description: "Specific task or job name", source: 'lead', example: "AC Repair" },
+      { label: "Comments", value: "{{comments}}", description: "Additional notes from the lead", source: 'lead', example: "Available after 3pm on weekdays" },
     ],
   },
   {
     label: "Location",
     description: "Address and location data",
     variables: [
-      { label: "Address", value: "{{address}}", description: "Lead's full address", source: 'lead' },
-      { label: "City", value: "{{city}}", description: "Lead's city", source: 'lead' },
-      { label: "State", value: "{{state}}", description: "Lead's state", source: 'lead' },
-      { label: "Postal Code", value: "{{postal_code}}", description: "Lead's ZIP/postal code", source: 'lead' },
+      { label: "Address", value: "{{address}}", description: "Lead's full address", source: 'lead', example: "123 Main Street" },
+      { label: "City", value: "{{city}}", description: "Lead's city", source: 'lead', example: "Asheville" },
+      { label: "State", value: "{{state}}", description: "Lead's state", source: 'lead', example: "NC" },
+      { label: "Postal Code", value: "{{postal_code}}", description: "Lead's ZIP/postal code", source: 'lead', example: "28801" },
     ],
   },
   {
     label: "Business",
     description: "Your business profile data",
     variables: [
-      { label: "Business Name", value: "{{business_name}}", description: "Your company name", source: 'business' },
-      { label: "Business Phone", value: "{{business_phone}}", description: "Your business phone number", source: 'business' },
-      { label: "Business Email", value: "{{business_email}}", description: "Your business email address", source: 'business' },
-      { label: "Business Address", value: "{{business_address}}", description: "Your business location", source: 'business' },
-      { label: "Agent Name", value: "{{agent_name}}", description: "Name of the AI agent", source: 'system' },
+      { label: "Business Name", value: "{{business_name}}", description: "Your company name", source: 'business', example: "Blue Ridge HVAC" },
+      { label: "Business Phone", value: "{{business_phone}}", description: "Your business phone number", source: 'business', example: "(828) 555-0100" },
+      { label: "Business Email", value: "{{business_email}}", description: "Your business email address", source: 'business', example: "info@blueridgehvac.com" },
+      { label: "Business Address", value: "{{business_address}}", description: "Your business location", source: 'business', example: "456 Commerce Dr, Asheville NC" },
+      { label: "Agent Name", value: "{{agent_name}}", description: "Name of the AI agent", source: 'system', example: "Sarah" },
     ],
   },
   {
     label: "Conversation",
     description: "Current conversation context",
     variables: [
-      { label: "Conversation ID", value: "{{conversation_id}}", description: "Unique conversation identifier", source: 'conversation' },
-      { label: "Message Count", value: "{{message_count}}", description: "Number of messages exchanged", source: 'conversation' },
-      { label: "Conversation Status", value: "{{conversation_status}}", description: "Current status (active, ended, escalated)", source: 'conversation' },
+      { label: "Conversation ID", value: "{{conversation_id}}", description: "Unique conversation identifier", source: 'conversation', example: "conv_abc123" },
+      { label: "Message Count", value: "{{message_count}}", description: "Number of messages exchanged", source: 'conversation', example: "5" },
+      { label: "Conversation Status", value: "{{conversation_status}}", description: "Current status (active, ended, escalated)", source: 'conversation', example: "active" },
     ],
   },
   {
     label: "Date & Time",
     description: "Current date and time values",
     variables: [
-      { label: "Current Date", value: "{{current_date}}", description: "Today's date (formatted)", source: 'system' },
-      { label: "Current Time", value: "{{current_time}}", description: "Current time (formatted)", source: 'system' },
-      { label: "Day of Week", value: "{{day_of_week}}", description: "Current day name", source: 'system' },
+      { label: "Current Date", value: "{{current_date}}", description: "Today's date (formatted)", source: 'system', example: "February 8, 2026" },
+      { label: "Current Time", value: "{{current_time}}", description: "Current time (formatted)", source: 'system', example: "2:30 PM" },
+      { label: "Day of Week", value: "{{day_of_week}}", description: "Current day name", source: 'system', example: "Saturday" },
     ],
   },
 ];
