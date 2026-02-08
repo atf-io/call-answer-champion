@@ -20,6 +20,7 @@ import { ProfileSection } from "@/components/business-profile/ProfileSection";
 import { EditableField } from "@/components/business-profile/EditableField";
 import { EditableTagList } from "@/components/business-profile/EditableTagList";
 import { GeneratePromptDialog } from "@/components/business-profile/GeneratePromptDialog";
+import { FaqManager } from "@/components/business-profile/FaqManager";
 
 interface ScrapedBusinessData {
   // Identity
@@ -778,6 +779,11 @@ const KnowledgeBase = () => {
                 onChange={(v) => updateLocalField('businessTeamInfo', v)}
                 placeholder="Information about your team, staff, or company history..."
                 multiline
+              />
+
+              <FaqManager
+                faqs={localProfile.businessFaqs ?? []}
+                onChange={(v) => updateLocalField('businessFaqs', v)}
               />
             </ProfileSection>
           </TabsContent>
