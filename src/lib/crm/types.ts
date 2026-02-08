@@ -51,10 +51,11 @@ export interface SyncTriggers {
 
 export interface AgentSchedulingConfig {
   enabled: boolean;
-  default_job_type_id?: string;
-  default_business_unit_id?: string;
+  default_product_or_service_id?: string;
+  default_product_or_service_name?: string;
   technician_assignment: 'any_available' | 'round_robin' | 'specific';
   specific_technician_id?: string;
+  specific_technician_name?: string;
   service_window_hours: number;
   require_confirmation: boolean;
   confirmation_message?: string;

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   MessageSquare,
   RefreshCw,
@@ -18,8 +19,10 @@ import {
   Info,
   Plus,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { useCrmConnections } from '@/hooks/useCrmConnections';
+import { useJobberSchema } from '@/hooks/useJobberSchema';
 import { CRM_CONFIGS } from '@/lib/crm/constants';
 import type { 
   AgentCrmConfig, 
@@ -57,7 +60,7 @@ const DEFAULT_SCHEDULING_CONFIG: AgentSchedulingConfig = {
   technician_assignment: 'any_available',
   service_window_hours: 4,
   require_confirmation: true,
-  confirmation_message: "Great! I've scheduled your appointment for {date} at {time}. You'll receive a confirmation shortly.",
+  confirmation_message: "Great! I've scheduled your service for {date} at {time}. You'll receive a confirmation shortly.",
 };
 
 const VOICEHUB_FIELDS = [
@@ -70,21 +73,29 @@ const VOICEHUB_FIELDS = [
   { id: 'notes', label: 'Conversation Notes' },
 ];
 
-// Mock CRM fields - in production these would come from the CRM API
-const JOBBER_FIELDS = [
+// Standard Jobber client fields (always available)
+const JOBBER_STANDARD_FIELDS = [
   { id: 'first_name', name: 'First Name' },
   { id: 'last_name', name: 'Last Name' },
   { id: 'phone', name: 'Phone' },
   { id: 'email', name: 'Email' },
   { id: 'property_address', name: 'Property Address' },
-  { id: 'custom_field_1', name: 'How did you hear about us?' },
-  { id: 'custom_field_2', name: 'Service Type' },
   { id: 'notes', name: 'Notes' },
 ];
 
 export function AgentCrmSettings({ agentId, agentType, config, onChange }: AgentCrmSettingsProps) {
   const { connections } = useCrmConnections();
   const activeConnections = connections.filter(c => c.is_active);
+  
+  // Get the current selected connection for fetching schema
+  const selectedConnection = activeConnections.find(c => c.crm_type === (config?.crm_type || 'jobber'));
+  const { 
+    productsOrServices, 
+    customFields, 
+    teamMembers, 
+    isLoading: isLoadingSchema,
+    refetch: refetchSchema
+  } = useJobberSchema(selectedConnection?.id);
 
   const [localConfig, setLocalConfig] = useState<AgentCrmConfig>(() => {
     if (config) return config;
@@ -411,7 +422,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
               <div>
                 <Label>Enable Scheduling</Label>
                 <p className="text-sm text-muted-foreground">
-                  Allow this agent to book appointments directly in {selectedCrmConfig.name}
+                  Allow this agent to book services directly in {selectedCrmConfig.name}
                 </p>
               </div>
               <Switch
@@ -422,46 +433,70 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
 
             {localConfig.scheduling_config.enabled && (
               <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Default Job Type</Label>
+                {/* Products/Services from Jobber */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Default Product or Service</Label>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => refetchSchema()}
+                      disabled={isLoadingSchema}
+                    >
+                      {isLoadingSchema ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {isLoadingSchema ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : productsOrServices.length > 0 ? (
                     <Select
-                      value={localConfig.scheduling_config.default_job_type_id || ''}
-                      onValueChange={(value) => handleSchedulingUpdate({ default_job_type_id: value })}
+                      value={localConfig.scheduling_config.default_product_or_service_id || ''}
+                      onValueChange={(value) => {
+                        const selected = productsOrServices.find(p => p.id === value);
+                        handleSchedulingUpdate({ 
+                          default_product_or_service_id: value,
+                          default_product_or_service_name: selected?.name
+                        });
+                      }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select job type" />
+                        <SelectValue placeholder="Select product or service from Jobber" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="service_call">Service Call</SelectItem>
-                        <SelectItem value="estimate">Estimate</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                        <SelectItem value="installation">Installation</SelectItem>
+                        {productsOrServices.map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <span>{product.name}</span>
+                              {product.durationMinutes && (
+                                <Badge variant="outline" className="text-xs">
+                                  {product.durationMinutes}m
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Business Unit</Label>
-                    <Select
-                      value={localConfig.scheduling_config.default_business_unit_id || ''}
-                      onValueChange={(value) => handleSchedulingUpdate({ default_business_unit_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select business unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hvac">HVAC</SelectItem>
-                        <SelectItem value="plumbing">Plumbing</SelectItem>
-                        <SelectItem value="electrical">Electrical</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  ) : (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        No products or services found in your Jobber account. Make sure you have products/services configured in Jobber, or click refresh to reload.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    The service type to use when creating jobs in {selectedCrmConfig.name}
+                  </p>
                 </div>
 
+                {/* Team Member / Technician Assignment */}
                 <div className="space-y-2">
-                  <Label>Technician Assignment</Label>
+                  <Label>Team Member Assignment</Label>
                   <Select
                     value={localConfig.scheduling_config.technician_assignment}
                     onValueChange={(value: AgentSchedulingConfig['technician_assignment']) => 
@@ -472,15 +507,53 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any_available">Any Available Technician</SelectItem>
+                      <SelectItem value="any_available">Any Available Team Member</SelectItem>
                       <SelectItem value="round_robin">Round Robin</SelectItem>
-                      <SelectItem value="specific">Specific Technician</SelectItem>
+                      <SelectItem value="specific">Specific Team Member</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
+                {localConfig.scheduling_config.technician_assignment === 'specific' && (
+                  <div className="space-y-2 pl-4">
+                    <Label>Select Team Member</Label>
+                    {isLoadingSchema ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : teamMembers.length > 0 ? (
+                      <Select
+                        value={localConfig.scheduling_config.specific_technician_id || ''}
+                        onValueChange={(value) => {
+                          const selected = teamMembers.find(t => t.id === value);
+                          handleSchedulingUpdate({ 
+                            specific_technician_id: value,
+                            specific_technician_name: selected?.name
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select team member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teamMembers.filter(t => t.isActive).map(member => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          No team members found. Click refresh above to reload from Jobber.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label>Service Window (hours)</Label>
+                  <Label>Arrival Window (hours)</Label>
                   <Select
                     value={String(localConfig.scheduling_config.service_window_hours)}
                     onValueChange={(value) => handleSchedulingUpdate({ service_window_hours: parseInt(value) })}
@@ -495,7 +568,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">
-                    Time window offered to customers for appointment arrival
+                    Time window offered to customers for technician arrival
                   </p>
                 </div>
 
@@ -505,7 +578,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                   <div>
                     <Label>Require Confirmation</Label>
                     <p className="text-sm text-muted-foreground">
-                      Agent confirms appointment with customer before booking
+                      Agent confirms service with customer before booking
                     </p>
                   </div>
                   <Switch
@@ -520,7 +593,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                     <Input
                       value={localConfig.scheduling_config.confirmation_message || ''}
                       onChange={(e) => handleSchedulingUpdate({ confirmation_message: e.target.value })}
-                      placeholder="Great! I've scheduled your appointment for {date} at {time}..."
+                      placeholder="Great! I've scheduled your service for {date} at {time}..."
                     />
                     <p className="text-sm text-muted-foreground">
                       Use {'{date}'} and {'{time}'} as placeholders
@@ -533,12 +606,27 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
 
           {/* Field Mapping Tab */}
           <TabsContent value="mapping" className="space-y-6">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Map VoiceHub fields to {selectedCrmConfig.name} fields to ensure data is synced correctly when creating or updating customers.
-              </AlertDescription>
-            </Alert>
+            <div className="flex items-center justify-between">
+              <Alert className="flex-1">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Map VoiceHub fields to {selectedCrmConfig.name} fields to ensure data is synced correctly when creating or updating customers.
+                </AlertDescription>
+              </Alert>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => refetchSchema()}
+                disabled={isLoadingSchema}
+                className="ml-2"
+              >
+                {isLoadingSchema ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
 
             <div className="space-y-4">
               {localConfig.field_mapping.map((mapping, index) => (
@@ -562,20 +650,43 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                   <Select
                     value={mapping.crm_field_id}
                     onValueChange={(value) => {
-                      const field = JOBBER_FIELDS.find(f => f.id === value);
+                      // Check standard fields first, then custom fields
+                      const standardField = JOBBER_STANDARD_FIELDS.find(f => f.id === value);
+                      const customField = customFields.find(f => f.id === value);
                       updateFieldMapping(index, { 
                         crm_field_id: value,
-                        crm_field_name: field?.name || value,
+                        crm_field_name: standardField?.name || customField?.label || value,
                       });
                     }}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className="w-[220px]">
                       <SelectValue placeholder={`${selectedCrmConfig.name} field`} />
                     </SelectTrigger>
                     <SelectContent>
-                      {JOBBER_FIELDS.map(field => (
+                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                        Standard Fields
+                      </div>
+                      {JOBBER_STANDARD_FIELDS.map(field => (
                         <SelectItem key={field.id} value={field.id}>{field.name}</SelectItem>
                       ))}
+                      {customFields.length > 0 && (
+                        <>
+                          <Separator className="my-1" />
+                          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                            Custom Fields (from Jobber)
+                          </div>
+                          {customFields.map(field => (
+                            <SelectItem key={field.id} value={field.id}>
+                              <div className="flex items-center gap-2">
+                                {field.label}
+                                <Badge variant="outline" className="text-xs">
+                                  {field.fieldType.toLowerCase()}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
 
