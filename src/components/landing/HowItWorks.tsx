@@ -39,7 +39,7 @@ const HowItWorks = () => {
             <span className="text-sm text-muted-foreground">Simple Process</span>
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-            Get started in <span className="text-gradient">minutes</span>
+            Get started in <span className="text-foreground">minutes</span>
           </h2>
           <p className="text-lg text-muted-foreground">
             No technical expertise required. Our guided setup makes it easy.
