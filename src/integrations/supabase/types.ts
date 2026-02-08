@@ -648,28 +648,52 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          business_active_promotions: Json | null
           business_address: string | null
+          business_after_hours_policy: string | null
+          business_brands_serviced: string[] | null
+          business_brands_sold: string[] | null
           business_certifications: string[] | null
           business_colors: Json | null
+          business_communication_style: string | null
           business_description: string | null
+          business_diagnostic_questions: string[] | null
+          business_discounts: Json | null
+          business_dispatch_address: string | null
+          business_dispatch_fee: string | null
           business_email: string | null
+          business_emergency_definition: string | null
           business_emergency_service: boolean | null
           business_equipment_brands: string[] | null
+          business_equipment_locations: string[] | null
+          business_exclusions: string[] | null
           business_faqs: Json | null
+          business_financing_options: Json | null
           business_guarantees: string[] | null
           business_hours: Json | null
+          business_insurance_status: string | null
+          business_key_phrases: string[] | null
+          business_license_numbers: string[] | null
           business_locations: Json | null
           business_logo_url: string | null
           business_name: string | null
           business_payment_methods: string[] | null
           business_phone: string | null
           business_pricing_info: string | null
+          business_pricing_model: string | null
+          business_property_types: string[] | null
+          business_review_themes: string[] | null
+          business_safety_triggers: string[] | null
           business_service_area: Json | null
+          business_service_categories: string[] | null
           business_services: string[] | null
           business_social_links: Json | null
           business_specialties: string[] | null
+          business_sub_services: string[] | null
           business_tagline: string | null
           business_team_info: string | null
+          business_urgency_levels: Json | null
+          business_value_propositions: string[] | null
           business_website: string | null
           business_years_in_business: string | null
           company_name: string | null
@@ -683,28 +707,52 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          business_active_promotions?: Json | null
           business_address?: string | null
+          business_after_hours_policy?: string | null
+          business_brands_serviced?: string[] | null
+          business_brands_sold?: string[] | null
           business_certifications?: string[] | null
           business_colors?: Json | null
+          business_communication_style?: string | null
           business_description?: string | null
+          business_diagnostic_questions?: string[] | null
+          business_discounts?: Json | null
+          business_dispatch_address?: string | null
+          business_dispatch_fee?: string | null
           business_email?: string | null
+          business_emergency_definition?: string | null
           business_emergency_service?: boolean | null
           business_equipment_brands?: string[] | null
+          business_equipment_locations?: string[] | null
+          business_exclusions?: string[] | null
           business_faqs?: Json | null
+          business_financing_options?: Json | null
           business_guarantees?: string[] | null
           business_hours?: Json | null
+          business_insurance_status?: string | null
+          business_key_phrases?: string[] | null
+          business_license_numbers?: string[] | null
           business_locations?: Json | null
           business_logo_url?: string | null
           business_name?: string | null
           business_payment_methods?: string[] | null
           business_phone?: string | null
           business_pricing_info?: string | null
+          business_pricing_model?: string | null
+          business_property_types?: string[] | null
+          business_review_themes?: string[] | null
+          business_safety_triggers?: string[] | null
           business_service_area?: Json | null
+          business_service_categories?: string[] | null
           business_services?: string[] | null
           business_social_links?: Json | null
           business_specialties?: string[] | null
+          business_sub_services?: string[] | null
           business_tagline?: string | null
           business_team_info?: string | null
+          business_urgency_levels?: Json | null
+          business_value_propositions?: string[] | null
           business_website?: string | null
           business_years_in_business?: string | null
           company_name?: string | null
@@ -718,28 +766,52 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          business_active_promotions?: Json | null
           business_address?: string | null
+          business_after_hours_policy?: string | null
+          business_brands_serviced?: string[] | null
+          business_brands_sold?: string[] | null
           business_certifications?: string[] | null
           business_colors?: Json | null
+          business_communication_style?: string | null
           business_description?: string | null
+          business_diagnostic_questions?: string[] | null
+          business_discounts?: Json | null
+          business_dispatch_address?: string | null
+          business_dispatch_fee?: string | null
           business_email?: string | null
+          business_emergency_definition?: string | null
           business_emergency_service?: boolean | null
           business_equipment_brands?: string[] | null
+          business_equipment_locations?: string[] | null
+          business_exclusions?: string[] | null
           business_faqs?: Json | null
+          business_financing_options?: Json | null
           business_guarantees?: string[] | null
           business_hours?: Json | null
+          business_insurance_status?: string | null
+          business_key_phrases?: string[] | null
+          business_license_numbers?: string[] | null
           business_locations?: Json | null
           business_logo_url?: string | null
           business_name?: string | null
           business_payment_methods?: string[] | null
           business_phone?: string | null
           business_pricing_info?: string | null
+          business_pricing_model?: string | null
+          business_property_types?: string[] | null
+          business_review_themes?: string[] | null
+          business_safety_triggers?: string[] | null
           business_service_area?: Json | null
+          business_service_categories?: string[] | null
           business_services?: string[] | null
           business_social_links?: Json | null
           business_specialties?: string[] | null
+          business_sub_services?: string[] | null
           business_tagline?: string | null
           business_team_info?: string | null
+          business_urgency_levels?: Json | null
+          business_value_propositions?: string[] | null
           business_website?: string | null
           business_years_in_business?: string | null
           company_name?: string | null
