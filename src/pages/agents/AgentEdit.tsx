@@ -12,10 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Loader2, Volume2, Mic, Clock, Settings2, Phone, Trash2, RefreshCw, Wand2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Volume2, Mic, Clock, Settings2, Phone, Trash2, RefreshCw, Wand2, Database } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useBusinessProfile } from "@/hooks/useBusinessProfile";
 import { generateAgentPrompt } from "@/lib/generateAgentPrompt";
+import { AgentCrmSettings } from "@/components/agents/AgentCrmSettings";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -107,6 +108,7 @@ const AgentEdit = () => {
   const [deleting, setDeleting] = useState(false);
   const [keywordsInput, setKeywordsInput] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [crmConfig, setCrmConfig] = useState<any>(null);
 
   const agent = agents.find(a => a.id === agentId);
   
@@ -293,7 +295,7 @@ const AgentEdit = () => {
         {isVoiceAgent ? (
           // Voice Agent Tabs (Full Retell Voice AI settings)
           <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="basic" className="gap-1">
                 <Settings2 className="w-4 h-4" />
                 Basic
@@ -313,6 +315,10 @@ const AgentEdit = () => {
               <TabsTrigger value="call" className="gap-1">
                 <Phone className="w-4 h-4" />
                 Call
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="gap-1">
+                <Database className="w-4 h-4" />
+                CRM
               </TabsTrigger>
             </TabsList>
 
@@ -850,11 +856,24 @@ const AgentEdit = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* CRM Tab - Voice Agent */}
+          <TabsContent value="crm">
+            <AgentCrmSettings
+              agentId={agentId || ''}
+              agentType="voice"
+              config={crmConfig}
+              onChange={(config) => {
+                setCrmConfig(config);
+                setHasChanges(true);
+              }}
+            />
+          </TabsContent>
         </Tabs>
         ) : (
           // Chat Agent / Speed to Lead Tabs (mirrors Retell Chat Agent settings)
           <Tabs defaultValue="basic" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="basic" className="gap-1">
                 <Settings2 className="w-4 h-4" />
                 Basic
@@ -866,6 +885,10 @@ const AgentEdit = () => {
               <TabsTrigger value="advanced" className="gap-1">
                 <Phone className="w-4 h-4" />
                 Advanced
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="gap-1">
+                <Database className="w-4 h-4" />
+                CRM
               </TabsTrigger>
             </TabsList>
 
@@ -1143,6 +1166,19 @@ const AgentEdit = () => {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* CRM Tab - SMS/Chat Agent */}
+            <TabsContent value="crm">
+              <AgentCrmSettings
+                agentId={agentId || ''}
+                agentType="sms"
+                config={crmConfig}
+                onChange={(config) => {
+                  setCrmConfig(config);
+                  setHasChanges(true);
+                }}
+              />
             </TabsContent>
           </Tabs>
         )}

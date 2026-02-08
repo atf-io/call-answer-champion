@@ -23,6 +23,50 @@ export interface CrmSyncSettings {
   sync_contacts: boolean;
 }
 
+// Agent-level CRM configuration
+export interface AgentCrmConfig {
+  crm_type: CrmType;
+  is_enabled: boolean;
+  communication_settings: CommunicationSettings;
+  sync_triggers: SyncTriggers;
+  scheduling_config: AgentSchedulingConfig;
+  field_mapping: FieldMapping[];
+}
+
+export interface CommunicationSettings {
+  note_destination: 'client_notes' | 'job_notes' | 'request_notes' | 'custom_field';
+  custom_field_id?: string;
+  include_transcript: boolean;
+  include_sentiment: boolean;
+  note_prefix: string;
+}
+
+export interface SyncTriggers {
+  on_message_sent: boolean;
+  on_call_end: boolean;
+  on_conversation_end: boolean;
+  batch_sync_enabled: boolean;
+  batch_sync_interval_minutes: number;
+}
+
+export interface AgentSchedulingConfig {
+  enabled: boolean;
+  default_job_type_id?: string;
+  default_business_unit_id?: string;
+  technician_assignment: 'any_available' | 'round_robin' | 'specific';
+  specific_technician_id?: string;
+  service_window_hours: number;
+  require_confirmation: boolean;
+  confirmation_message?: string;
+}
+
+export interface FieldMapping {
+  voicehub_field: string;
+  crm_field_id: string;
+  crm_field_name: string;
+  is_required: boolean;
+}
+
 export interface CrmSyncLog {
   id: string;
   user_id: string;
