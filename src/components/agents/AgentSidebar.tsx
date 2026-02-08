@@ -18,6 +18,7 @@ import {
   Megaphone,
   Users,
   Webhook,
+  ArrowLeftRight,
 } from "lucide-react";
 
 interface NavItem {
@@ -46,6 +47,7 @@ const navigation: NavGroup[] = [
     items: [
       { name: "Phone Numbers", href: "/dashboard/agents/phone-numbers", icon: Phone },
       { name: "Campaigns", href: "/dashboard/agents/campaigns", icon: Megaphone },
+      { name: "CRM Integrations", href: "/dashboard/agents/crm-integrations", icon: ArrowLeftRight },
       { name: "Webhooks", href: "/dashboard/agents/webhooks", icon: Webhook },
     ],
   },
