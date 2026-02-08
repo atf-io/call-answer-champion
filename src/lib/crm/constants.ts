@@ -1,4 +1,11 @@
-import { CrmProvider } from './types';
+import { CrmProvider, CrmType } from './types';
+
+// Quick lookup map for CRM configs
+export const CRM_CONFIGS: Record<CrmType, { name: string; color: string }> = {
+  jobber: { name: 'Jobber', color: '#00B289' },
+  servicetitan: { name: 'ServiceTitan', color: '#FF6B35' },
+  housecall_pro: { name: 'Housecall Pro', color: '#0066FF' },
+};
 
 export const CRM_PROVIDERS: CrmProvider[] = [
   {
