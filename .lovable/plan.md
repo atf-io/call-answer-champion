@@ -1,226 +1,301 @@
 
-# SMS Lead Automation Flow - Validation & Reliability Plan
+# CRM Integration System for VoiceHub
 
-## Current State Analysis
+## Overview
 
-After exploring the codebase, I've identified that you have most of the infrastructure in place, but there are **critical gaps** that prevent the flow from being seamless and 100% reliable.
+This plan outlines a comprehensive CRM integration system for Jobber, ServiceTitan, and House Call Pro. The integration will enable bidirectional sync: pushing communications from VoiceHub to CRMs, receiving webhooks from CRMs to manage campaign enrollments, and accessing scheduling/dispatch capabilities.
 
----
-
-## Flow Overview
+## Architecture Diagram
 
 ```text
-Lead Webhook    Campaign Enrollment    Scheduled Messages    Inbound Reply    Agent Takeover    Result Assignment
-     |                  |                      |                   |                 |                  |
-     v                  v                      v                   v                 v                  v
-[lead-webhook] --> [Enroll + Send Msg 1] --> [sms-processor] --> [sms-inbound] --> [AI Response] --> [Conversation End]
-     |                  |                      |                   |                 |                  |
-     +--> Contact       +--> Conversation      +--> Runs on cron   +--> Pauses       +--> Agent uses    +--> conversion_status
-     +--> SMS Agent     +--> Enrollment        |    (MISSING!)     |   campaign      |   its prompt     |   (NOT IMPLEMENTED)
-                        +--> First SMS         |                   |                 |                  |
-                                               +--> Sends follow-ups                 |                  |
++------------------+     +------------------+     +------------------+
+|    Jobber API    |     | ServiceTitan API |     | HouseCall Pro API|
+|    (GraphQL)     |     |     (REST)       |     |     (REST)       |
++--------+---------+     +--------+---------+     +--------+---------+
+         |                        |                        |
+         +------------------------+------------------------+
+                                  |
+                    +-------------v--------------+
+                    |   CRM Integration Layer    |
+                    |   (Supabase Edge Function) |
+                    +-------------+--------------+
+                                  |
+         +------------------------+------------------------+
+         |                        |                        |
++--------v---------+    +---------v--------+    +---------v--------+
+| crm-sync         |    | crm-webhook      |    | crm-scheduling   |
+| (Push to CRM)    |    | (Receive events) |    | (Availability)   |
++------------------+    +------------------+    +------------------+
+         |                        |                        |
+         +------------------------+------------------------+
+                                  |
+                    +-------------v--------------+
+                    |     VoiceHub Database      |
+                    |  (contacts, campaigns,     |
+                    |   sms_messages, call_logs) |
+                    +----------------------------+
 ```
 
----
+## Database Schema
 
-## Issues Identified
+### New Tables
 
-### 1. **CRITICAL: Scheduled SMS Processor Not Running**
-The `sms-processor` edge function exists but is **never called**. There's no cron job configured to run it every 5 minutes.
+**1. `crm_connections`** - Stores OAuth credentials per user/CRM
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key to auth.users |
+| crm_type | text | 'jobber', 'servicetitan', 'housecall_pro' |
+| access_token | text | Encrypted OAuth access token |
+| refresh_token | text | Encrypted OAuth refresh token |
+| expires_at | timestamptz | Token expiration time |
+| tenant_id | text | CRM-specific tenant/account ID |
+| is_active | boolean | Connection status |
+| sync_settings | jsonb | Per-CRM sync preferences |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
 
-**Evidence:**
-- Database shows enrollments with `next_message_at` timestamps from Feb 7th that haven't been processed
-- The migration enables `pg_cron` extension but never creates the actual job
-- No `cron.job` entries exist in the database
+**2. `crm_sync_logs`** - Audit trail for all sync operations
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key |
+| crm_connection_id | uuid | Foreign key to crm_connections |
+| sync_type | text | 'communication', 'contact', 'appointment' |
+| direction | text | 'push' or 'pull' |
+| entity_type | text | 'sms_message', 'call_log', 'contact' |
+| entity_id | uuid | Reference to synced entity |
+| crm_entity_id | text | ID in the CRM system |
+| status | text | 'success', 'failed', 'pending' |
+| error_message | text | |
+| payload | jsonb | Sync payload for debugging |
+| created_at | timestamptz | |
 
-**Fix Required:**
-- Create a pg_cron job to call the sms-processor edge function every 5 minutes
-- Alternatively, use Supabase's built-in edge function scheduling
+**3. `crm_contact_mappings`** - Links VoiceHub contacts to CRM customers
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key |
+| contact_id | uuid | Foreign key to contacts |
+| crm_connection_id | uuid | Foreign key to crm_connections |
+| crm_customer_id | text | Customer ID in CRM |
+| crm_customer_data | jsonb | Cached customer data |
+| last_synced_at | timestamptz | |
+| created_at | timestamptz | |
 
-### 2. **CRITICAL: Retell Inbound SMS Webhook Not Configured**
-The `sms-inbound` edge function exists but Retell doesn't know to call it when an SMS reply comes in.
+**4. `crm_scheduling_config`** - Business units, job types, and scheduling rules
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key |
+| crm_connection_id | uuid | Foreign key to crm_connections |
+| business_units | jsonb | Cached list of business units |
+| job_types | jsonb | Cached list of job types |
+| technicians | jsonb | Cached list of technicians |
+| scheduling_rules | jsonb | Availability windows, buffer times |
+| last_synced_at | timestamptz | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
 
-**Current State:**
-- The function expects a POST with `{ from, to, body }` payload
-- Retell requires you to configure an "Inbound Webhook" URL in the dashboard
+**5. `crm_webhook_secrets`** - Webhook authentication per CRM
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| user_id | uuid | Foreign key |
+| crm_type | text | 'jobber', 'servicetitan', 'housecall_pro' |
+| secret_key | text | Webhook verification secret |
+| is_active | boolean | |
+| created_at | timestamptz | |
 
-**Fix Required:**
-- Document/configure the Retell dashboard inbound webhook URL
-- Update the payload format to match Retell's actual webhook format (uses `sms_inbound` event)
+## Edge Functions
 
-### 3. **MISSING: Conversation Result Assignment**
-When a conversation ends, there's no logic to analyze the conversation and assign a `conversion_status` result.
+### 1. `crm-oauth` - OAuth Flow Handler
+Handles OAuth 2.0 authorization for all three CRMs:
+- Initiate authorization redirect
+- Handle callback and token exchange
+- Token refresh on expiration
+- Store encrypted tokens
 
-**Current State:**
-- `sms_conversations` has a `conversion_status` column (text)
-- No code ever sets this value
-- No AI analysis of conversation outcomes
+### 2. `crm-sync` - Push Communications to CRM
+Syncs VoiceHub data to CRM:
+- Push SMS messages as customer notes/communications
+- Push call logs with transcripts
+- Create/update customers on contact creation
+- Map VoiceHub contacts to CRM customers
 
-**Required Values:**
-- `success` - Appointment booked / Goal achieved
-- `qualified` - Lead qualified but no appointment
-- `unqualified` - Lead not a good fit
-- `escalated` - Handed off to human
-- `no_response` - Lead never replied
-- `discarded` - Lead opted out or irrelevant
+### 3. `crm-webhook` - Receive CRM Events
+Handles incoming webhooks from CRMs:
+- Customer status changes (e.g., marked as contacted)
+- Job booked/scheduled events
+- Appointment completed events
+- Triggers campaign removal when customer is "handled"
 
-### 4. **MISSING: Campaign-to-Agent Association Enforcement**
-Campaigns can specify an `sms_agent_id`, but when a lead replies, the system uses the conversation's agent, not the campaign's agent.
+### 4. `crm-scheduling` - Scheduling Integration
+Fetches and manages scheduling data:
+- Get available time slots
+- Fetch business units and job types
+- Check technician availability
+- Book appointments directly to dispatch board
 
-**Current State:** Working correctly - the conversation stores `sms_agent_id` which is the agent that handles replies.
+## Frontend Components
 
-### 5. **MINOR: No Conversation End Detection**
-There's no logic to detect when a conversation should end naturally (goal achieved, timeout, etc.) and trigger result assignment.
+### 1. CRM Integrations Page (`/dashboard/agents/integrations`)
+A new page under Deploy section with:
+- CRM connection cards (Jobber, ServiceTitan, HouseCall Pro)
+- OAuth connect/disconnect flows
+- Connection status and last sync time
+- Sync settings toggle (auto-sync, bidirectional, etc.)
 
----
+### 2. CRM Settings Component
+Per-CRM configuration:
+- Enable/disable communication sync
+- Select which data to sync (SMS, calls, both)
+- Configure webhook triggers for campaign removal
+- Map job types to VoiceHub services
 
-## Implementation Plan
+### 3. Scheduling Configuration Panel
+- Business unit selector
+- Job type mapping
+- Availability preview calendar
+- Scheduling rules editor
 
-### Phase 1: Enable Scheduled Message Processing (Critical)
+### 4. Contact CRM Link
+On contact detail page:
+- Show linked CRM customer
+- Manual sync button
+- View CRM activity
+- Link/unlink customer
 
-**1.1 Create pg_cron Job**
-Add a database migration to schedule the sms-processor to run every 5 minutes:
+## CRM-Specific Implementation Details
 
-```sql
-SELECT cron.schedule(
-  'process-sms-campaigns',
-  '*/5 * * * *',
-  $$
-  SELECT extensions.http_post(
-    url := current_setting('app.supabase_url') || '/functions/v1/sms-processor',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.service_role_key')
-    ),
-    body := '{}'::jsonb
-  )
-  $$
-);
+### Jobber (GraphQL API)
+- **Auth**: OAuth 2.0 with refresh tokens
+- **Webhooks**: CLIENT_CREATE, CLIENT_UPDATE, JOB_CREATE, JOB_COMPLETE
+- **Endpoints**: GraphQL at `api.getjobber.com/api/graphql`
+- **Scheduling**: Query jobs and appointments, create jobs via mutation
+
+### ServiceTitan (REST API)
+- **Auth**: OAuth 2.0 Client Credentials flow
+- **Webhooks**: Custom webhook subscriptions
+- **Endpoints**: REST at `api.servicetitan.io/`
+- **Scheduling Pro**: Native scheduling API with availability slots
+- **Tenant ID**: Required for all API calls
+
+### HouseCall Pro (REST API)
+- **Auth**: OAuth 2.0
+- **Webhooks**: job.created, job.completed, customer.updated
+- **Endpoints**: REST at `api.housecallpro.com/`
+- **Scheduling**: Jobs and schedule endpoints
+
+## Sync Logic Workflows
+
+### Push Communication to CRM (Triggered by SMS/Call)
+```text
+1. SMS sent or call completed
+2. Check if user has active CRM connection
+3. Look up contact's CRM customer mapping
+4. If no mapping, attempt to match by phone number
+5. Push communication as customer note/activity
+6. Log sync result
 ```
 
-**1.2 Alternative: Use pg_net for simpler HTTP calls**
-The cron job will use pg_net extension (already enabled) to call the edge function.
-
-### Phase 2: Fix Inbound SMS Webhook (Critical)
-
-**2.1 Update sms-inbound to Handle Retell's Format**
-Retell sends a different payload structure than what we currently expect:
-
-```typescript
-interface RetellSmsInboundPayload {
-  event: "sms_inbound";
-  sms_inbound: {
-    from_number: string;
-    to_number: string;
-    message: string;
-    agent_id?: string;
-  };
-}
+### CRM Webhook → Campaign Removal
+```text
+1. Receive webhook from CRM (e.g., job booked)
+2. Verify webhook signature
+3. Extract customer phone/ID
+4. Find VoiceHub contact by phone or CRM mapping
+5. Find active campaign enrollments for contact
+6. Update enrollment status to 'cancelled_crm_event'
+7. Optionally end conversation
+8. Log the action
 ```
 
-**2.2 Add Configuration Instructions**
-In Retell Dashboard: Phone Numbers > Select Number > Inbound Webhook URL:
-```
-https://zscmunbouhmwouiczkgk.supabase.co/functions/v1/sms-inbound
-```
-
-### Phase 3: Implement Result Assignment
-
-**3.1 Create Conversation Analysis Function**
-Add AI-powered conversation analysis when conversations end:
-
-```typescript
-async function analyzeConversationResult(
-  messages: SmsMessage[],
-  agentPrompt: string
-): Promise<ConversationResult> {
-  // Call Lovable AI to analyze the conversation
-  // Returns: success, qualified, unqualified, escalated, no_response, discarded
-}
+### Scheduling Flow
+```text
+1. AI agent collects service details from lead
+2. Fetch available slots from CRM (with caching)
+3. Present options to lead
+4. Lead selects preferred time
+5. Create job/appointment in CRM dispatch board
+6. Update contact status in VoiceHub
+7. Send confirmation to lead
 ```
 
-**3.2 Add Auto-End Detection**
-Detect conversation end triggers:
-- Lead says "stop" or opts out -> `discarded`
-- Appointment scheduled -> `success`
-- Lead escalated -> `escalated`
-- No response for X days -> `no_response`
-- Lead disqualified by agent -> `unqualified`
+## File Structure
 
-**3.3 Update Conversation Status on End**
-When conversation ends, update `sms_conversations.conversion_status` and `ended_at`.
+```text
+src/
+├── components/
+│   └── integrations/
+│       ├── CrmConnectionCard.tsx
+│       ├── CrmSyncSettings.tsx
+│       ├── CrmSchedulingConfig.tsx
+│       ├── JobberConnector.tsx
+│       ├── ServiceTitanConnector.tsx
+│       └── HouseCallProConnector.tsx
+├── hooks/
+│   ├── useCrmConnections.ts
+│   ├── useCrmSync.ts
+│   └── useCrmScheduling.ts
+├── pages/
+│   └── agents/
+│       └── CrmIntegrations.tsx
+└── lib/
+    └── crm/
+        ├── types.ts
+        └── constants.ts
 
-### Phase 4: Reliability Improvements
-
-**4.1 Add Dead Letter Handling**
-Track failed SMS deliveries and retry logic:
-- Add `delivery_status` column to `sms_messages`
-- Implement retry logic for failed deliveries
-
-**4.2 Add Monitoring & Alerts**
-- Log all critical events with structured logging
-- Create alert rules for failed SMS deliveries
-- Create alert for processor not running
-
-**4.3 Add Idempotency**
-- Prevent duplicate enrollments for same phone + campaign
-- Prevent duplicate message sends
-
----
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/migrations/XXXX_add_cron_job.sql` | Create | Schedule sms-processor every 5 min |
-| `supabase/functions/sms-inbound/index.ts` | Modify | Support Retell's webhook format |
-| `supabase/functions/sms-processor/index.ts` | Modify | Add result analysis on completion |
-| `supabase/functions/conversation-analyzer/index.ts` | Create | AI-powered result classification |
-| `supabase/migrations/XXXX_add_delivery_tracking.sql` | Create | Add delivery_status to sms_messages |
-
----
-
-## Testing Strategy
-
-1. **Test lead-webhook**: Simulate incoming lead, verify enrollment and first SMS
-2. **Test sms-processor**: Manually trigger and verify follow-up messages sent
-3. **Test sms-inbound**: Simulate Retell webhook, verify campaign pauses and agent responds
-4. **Test result assignment**: Verify conversations get correct status after ending
-5. **End-to-end test**: Full flow from lead ingestion to conversation completion
-
----
-
-## Technical Details
-
-### Database Changes Required
-
-```sql
--- Add delivery tracking
-ALTER TABLE sms_messages ADD COLUMN delivery_status TEXT DEFAULT 'pending';
-ALTER TABLE sms_messages ADD COLUMN delivery_error TEXT;
-ALTER TABLE sms_messages ADD COLUMN delivered_at TIMESTAMPTZ;
-
--- Add unique constraint to prevent duplicate enrollments
-ALTER TABLE sms_campaign_enrollments 
-ADD CONSTRAINT unique_phone_campaign UNIQUE (lead_phone, campaign_id);
+supabase/functions/
+├── crm-oauth/
+│   └── index.ts
+├── crm-sync/
+│   └── index.ts
+├── crm-webhook/
+│   └── index.ts
+└── crm-scheduling/
+    └── index.ts
 ```
 
-### Cron Job Setup
-The pg_cron extension is already enabled. We need to:
-1. Set the required secrets as database settings
-2. Create the cron job to call sms-processor
+## Implementation Phases
 
-### Edge Function Updates
-- `sms-inbound`: Parse Retell's format, improve AI response quality
-- `sms-processor`: Add logging, better error handling
-- New `conversation-analyzer`: AI classification of outcomes
+### Phase 1: Foundation
+- Create database tables with migrations
+- Build `crm-oauth` edge function for OAuth flows
+- Create `CrmIntegrations` page with connection cards
+- Implement `useCrmConnections` hook
+- Add navigation item under "Deploy"
 
----
+### Phase 2: Communication Sync (Push)
+- Build `crm-sync` edge function
+- Add triggers on `sms_messages` and `call_logs` INSERT
+- Create sync logging and error handling
+- Add sync status indicators on contacts
 
-## Priority Order
+### Phase 3: CRM Webhooks (Pull)
+- Build `crm-webhook` edge function with signature verification
+- Define webhook event handlers per CRM
+- Implement campaign removal logic
+- Add webhook activity log UI
 
-1. **P0 (Do First)**: Enable cron job for sms-processor - without this, campaigns never progress
-2. **P0 (Do First)**: Fix sms-inbound to match Retell's format - without this, replies aren't processed
-3. **P1 (Next)**: Implement result assignment - needed for tracking success
-4. **P2 (Later)**: Add reliability improvements - monitoring, retries, alerts
+### Phase 4: Scheduling Integration
+- Build `crm-scheduling` edge function
+- Create scheduling config UI
+- Cache business units and job types
+- Integrate availability check into AI agent prompts
+- Enable direct booking via agent conversations
 
+## Security Considerations
+
+- All OAuth tokens stored encrypted at rest
+- Webhook signatures verified before processing
+- Per-user API key isolation
+- RLS policies on all CRM tables
+- Audit logging for all sync operations
+
+## Technical Notes
+
+- Token refresh handled automatically before expiration
+- Retry logic with exponential backoff for sync failures
+- Caching layer for scheduling data (15-minute TTL)
+- Rate limiting awareness for each CRM's API limits
