@@ -135,16 +135,81 @@ Deno.serve(async (req) => {
           schema: {
             type: 'object',
             properties: {
+              // Business Identity
               business_name: { type: 'string', description: 'The name of the business or company' },
               business_description: { type: 'string', description: 'A comprehensive description of what the business does, their mission, and value proposition' },
+              tagline: { type: 'string', description: 'Business slogan or tagline' },
               phone: { type: 'string', description: 'Primary phone number of the business' },
               email: { type: 'string', description: 'Primary email address of the business' },
               address: { type: 'string', description: 'Physical address or headquarters location of the business' },
+              years_in_business: { type: 'string', description: 'How long the business has been operating' },
+              
+              // Credentials & Authority
+              license_numbers: { 
+                type: 'array', 
+                items: { type: 'string' },
+                description: 'State/local license numbers (e.g., C-36 Plumbing, C-10 Electrical, contractor license numbers)'
+              },
+              certifications: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Professional certifications, licenses, or accreditations (NATE, EPA, IICRC, manufacturer-specific like Tesla Certified)'
+              },
+              insurance_status: { type: 'string', description: 'Insurance information - general liability, workers comp confirmation' },
+              value_propositions: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Unique selling points, guarantees, promises (e.g., 24-hour repair guarantee, No-Surprise Pricing, 100% satisfaction)'
+              },
+              
+              // Service Logic
+              service_categories: { 
+                type: 'array', 
+                items: { type: 'string' },
+                description: 'Core trades or service categories (HVAC, Plumbing, Electrical, Roofing, etc.)'
+              },
               services: { 
                 type: 'array', 
                 items: { type: 'string' },
                 description: 'Complete list of all services, products, or offerings provided by the business'
               },
+              sub_services: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific sub-services or tasks (Slab Leak Detection, Panel Upgrades, Duct Cleaning, etc.)'
+              },
+              specialties: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Areas of specialty or expertise'
+              },
+              brands_serviced: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Brands the business services, repairs, or maintains'
+              },
+              brands_sold: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Brands the business sells or installs'
+              },
+              exclusions: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'What the business does NOT do (e.g., No commercial refrigeration, No mobile homes)'
+              },
+              property_types: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Types of properties served (Residential, Commercial, HOA, Multi-family)'
+              },
+              equipment_locations: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Equipment access locations the business works with (Attic, Crawlspace, Rooftop, Basement)'
+              },
+              
+              // Geographic & Operations
               service_area: {
                 type: 'object',
                 properties: {
@@ -157,6 +222,7 @@ Deno.serve(async (req) => {
                 },
                 description: 'Geographic areas where the business provides services'
               },
+              dispatch_address: { type: 'string', description: 'Dispatch center or warehouse address if different from main address' },
               business_hours: {
                 type: 'object',
                 properties: {
@@ -171,6 +237,10 @@ Deno.serve(async (req) => {
                 },
                 description: 'Business operating hours for each day of the week'
               },
+              after_hours_policy: { type: 'string', description: 'Policy for after-hours, nights, weekends, holidays' },
+              emergency_service: { type: 'boolean', description: 'Whether the business offers emergency or 24/7 service' },
+              emergency_definition: { type: 'string', description: 'What qualifies as an emergency vs next-day appointment' },
+              dispatch_fee: { type: 'string', description: 'Standard trip charge amount and if applied toward total repair cost' },
               locations: {
                 type: 'array',
                 items: {
@@ -184,28 +254,92 @@ Deno.serve(async (req) => {
                 },
                 description: 'All business locations or branches'
               },
-              equipment_brands: {
+              
+              // Lead Qualification
+              safety_triggers: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Brands or equipment the business works with, installs, or services'
+                description: 'Red-flag safety keywords that need immediate attention (Smell of gas, Sparks, Total power loss, Flooding)'
               },
-              certifications: {
+              diagnostic_questions: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Professional certifications, licenses, or accreditations'
+                description: 'Standard troubleshooting questions to ask customers during intake'
               },
-              team_info: { type: 'string', description: 'Information about the team, staff, or company history and experience' },
-              specialties: {
+              urgency_levels: {
+                type: 'object',
+                properties: {
+                  immediate: { type: 'string', description: 'What qualifies as immediate/emergency' },
+                  same_day: { type: 'string', description: 'What qualifies as same-day service' },
+                  scheduled: { type: 'string', description: 'What can be scheduled for later' }
+                },
+                description: 'How to categorize customer urgency levels'
+              },
+              
+              // Sales & Finance
+              pricing_model: { type: 'string', description: 'Flat-rate vs Hourly pricing model' },
+              pricing_info: { type: 'string', description: 'Any pricing information, estimates, or starting prices' },
+              payment_methods: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Areas of specialty or expertise'
+                description: 'Accepted payment methods (Cash, Check, Credit Card, Venmo, Zelle, Financing)'
               },
-              pricing_info: { type: 'string', description: 'Any pricing information, estimates, or financing options mentioned' },
+              financing_options: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    provider: { type: 'string', description: 'Financing partner name (Synchrony, GoodLeap, etc.)' },
+                    details: { type: 'string', description: 'Terms, minimum amounts, or special offers' }
+                  }
+                },
+                description: 'Financing partners and options available'
+              },
+              active_promotions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    code: { type: 'string' },
+                    expires: { type: 'string' }
+                  }
+                },
+                description: 'Current coupons, seasonal specials, or promotional offers'
+              },
+              discounts: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', description: 'Discount type (Senior, Military, First-time, etc.)' },
+                    amount: { type: 'string', description: 'Percentage or flat rate discount' }
+                  }
+                },
+                description: 'Senior, Military, or other standing discounts'
+              },
               guarantees: {
                 type: 'array',
                 items: { type: 'string' },
                 description: 'Warranties, guarantees, or satisfaction promises'
               },
+              
+              // Brand Voice
+              communication_style: { type: 'string', description: 'Communication style (Professional & Direct, Neighborly & Casual, Technical & Expert, etc.)' },
+              key_phrases: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific slogans, scripts, or phrases the business uses'
+              },
+              review_themes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Key positive themes from customer reviews (fast response, professional, clean, etc.)'
+              },
+              
+              // Additional
+              team_info: { type: 'string', description: 'Information about the team, staff, or company history and experience' },
               faqs: {
                 type: 'array',
                 items: {
@@ -233,15 +367,7 @@ Deno.serve(async (req) => {
                   homeadvisor: { type: 'string' }
                 },
                 description: 'All social media and review profile URLs'
-              },
-              payment_methods: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Accepted payment methods and financing options'
-              },
-              emergency_service: { type: 'boolean', description: 'Whether the business offers emergency or 24/7 service' },
-              years_in_business: { type: 'string', description: 'How long the business has been operating' },
-              tagline: { type: 'string', description: 'Business slogan or tagline' }
+              }
             }
           }
         }],
@@ -262,6 +388,7 @@ Deno.serve(async (req) => {
     const businessData = {
       success: true,
       data: {
+        // Identity
         business_name: extractedJson.business_name || metadata.title || '',
         business_description: extractedJson.business_description || metadata.description || '',
         tagline: extractedJson.tagline || '',
@@ -269,30 +396,59 @@ Deno.serve(async (req) => {
         email: extractedJson.email || '',
         address: extractedJson.address || '',
         website: formattedUrl,
+        years_in_business: extractedJson.years_in_business || '',
         
-        services: extractedJson.services || [],
-        specialties: extractedJson.specialties || [],
-        equipment_brands: extractedJson.equipment_brands || [],
+        // Credentials
+        license_numbers: extractedJson.license_numbers || [],
         certifications: extractedJson.certifications || [],
+        insurance_status: extractedJson.insurance_status || '',
+        value_propositions: extractedJson.value_propositions || [],
+        guarantees: extractedJson.guarantees || [],
         
+        // Services
+        service_categories: extractedJson.service_categories || [],
+        services: extractedJson.services || [],
+        sub_services: extractedJson.sub_services || [],
+        specialties: extractedJson.specialties || [],
+        brands_serviced: extractedJson.brands_serviced || [],
+        brands_sold: extractedJson.brands_sold || [],
+        exclusions: extractedJson.exclusions || [],
+        property_types: extractedJson.property_types || [],
+        equipment_locations: extractedJson.equipment_locations || [],
+        
+        // Operations
         service_area: extractedJson.service_area || {},
-        
+        dispatch_address: extractedJson.dispatch_address || '',
         business_hours: extractedJson.business_hours || {},
+        after_hours_policy: extractedJson.after_hours_policy || '',
         emergency_service: extractedJson.emergency_service || false,
-        
+        emergency_definition: extractedJson.emergency_definition || '',
+        dispatch_fee: extractedJson.dispatch_fee || '',
         locations: extractedJson.locations || [],
         
-        team_info: extractedJson.team_info || '',
-        years_in_business: extractedJson.years_in_business || '',
+        // Lead Qualification
+        safety_triggers: extractedJson.safety_triggers || [],
+        diagnostic_questions: extractedJson.diagnostic_questions || [],
+        urgency_levels: extractedJson.urgency_levels || {},
+        
+        // Sales & Finance
+        pricing_model: extractedJson.pricing_model || '',
         pricing_info: extractedJson.pricing_info || '',
-        guarantees: extractedJson.guarantees || [],
         payment_methods: extractedJson.payment_methods || [],
+        financing_options: extractedJson.financing_options || [],
+        active_promotions: extractedJson.active_promotions || [],
+        discounts: extractedJson.discounts || [],
         
+        // Brand Voice
+        communication_style: extractedJson.communication_style || '',
+        key_phrases: extractedJson.key_phrases || [],
+        review_themes: extractedJson.review_themes || [],
+        
+        // Additional
+        team_info: extractedJson.team_info || '',
         faqs: extractedJson.faqs || [],
-        
         logo_url: branding.images?.logo || branding.logo || '',
         colors: branding.colors || {},
-        
         social_links: extractedJson.social_links || {},
       }
     };

@@ -21,6 +21,7 @@ import { EditableField } from "@/components/business-profile/EditableField";
 import { EditableTagList } from "@/components/business-profile/EditableTagList";
 
 interface ScrapedBusinessData {
+  // Identity
   business_name: string;
   tagline: string;
   business_description: string;
@@ -28,19 +29,56 @@ interface ScrapedBusinessData {
   email: string;
   address: string;
   website: string;
-  services: string[];
-  specialties: string[];
-  equipment_brands: string[];
-  certifications: string[];
-  guarantees: string[];
-  payment_methods: string[];
-  team_info: string;
   years_in_business: string;
-  pricing_info: string;
-  business_hours: Record<string, string>;
-  emergency_service: boolean;
+  
+  // Credentials
+  license_numbers: string[];
+  certifications: string[];
+  insurance_status: string;
+  value_propositions: string[];
+  guarantees: string[];
+  
+  // Services
+  service_categories: string[];
+  services: string[];
+  sub_services: string[];
+  specialties: string[];
+  brands_serviced: string[];
+  brands_sold: string[];
+  exclusions: string[];
+  property_types: string[];
+  equipment_locations: string[];
+  
+  // Operations
   service_area: { cities?: string[]; counties?: string[]; states?: string[]; zip_codes?: string[]; radius?: string; description?: string };
+  dispatch_address: string;
+  business_hours: Record<string, string>;
+  after_hours_policy: string;
+  emergency_service: boolean;
+  emergency_definition: string;
+  dispatch_fee: string;
   locations: Array<{ name?: string; address?: string; phone?: string; hours?: string }>;
+  
+  // Lead Qualification
+  safety_triggers: string[];
+  diagnostic_questions: string[];
+  urgency_levels: { immediate?: string; same_day?: string; scheduled?: string };
+  
+  // Sales & Finance
+  pricing_model: string;
+  pricing_info: string;
+  payment_methods: string[];
+  financing_options: Array<{ provider?: string; details?: string }>;
+  active_promotions: Array<{ name?: string; description?: string; code?: string; expires?: string }>;
+  discounts: Array<{ type?: string; amount?: string }>;
+  
+  // Brand Voice
+  communication_style: string;
+  key_phrases: string[];
+  review_themes: string[];
+  
+  // Additional
+  team_info: string;
   faqs: { question: string; answer: string }[];
   logo_url: string;
   colors: Record<string, unknown>;
@@ -89,6 +127,7 @@ const KnowledgeBase = () => {
       if (result?.success && result.data) {
         // Map scraped data to profile fields
         const updates: Partial<BusinessProfile> = {
+          // Identity
           businessName: result.data.business_name || localProfile.businessName,
           businessDescription: result.data.business_description || localProfile.businessDescription,
           businessTagline: result.data.tagline || localProfile.businessTagline,
@@ -98,16 +137,26 @@ const KnowledgeBase = () => {
           businessEmail: result.data.email || localProfile.businessEmail,
           businessAddress: result.data.address || localProfile.businessAddress,
           businessYearsInBusiness: result.data.years_in_business || localProfile.businessYearsInBusiness,
-          businessServices: result.data.services?.length ? result.data.services : localProfile.businessServices,
-          businessSpecialties: result.data.specialties?.length ? result.data.specialties : localProfile.businessSpecialties,
-          businessEquipmentBrands: result.data.equipment_brands?.length ? result.data.equipment_brands : localProfile.businessEquipmentBrands,
+          
+          // Credentials
+          businessLicenseNumbers: result.data.license_numbers?.length ? result.data.license_numbers : localProfile.businessLicenseNumbers,
           businessCertifications: result.data.certifications?.length ? result.data.certifications : localProfile.businessCertifications,
+          businessInsuranceStatus: result.data.insurance_status || localProfile.businessInsuranceStatus,
+          businessValuePropositions: result.data.value_propositions?.length ? result.data.value_propositions : localProfile.businessValuePropositions,
           businessGuarantees: result.data.guarantees?.length ? result.data.guarantees : localProfile.businessGuarantees,
-          businessPaymentMethods: result.data.payment_methods?.length ? result.data.payment_methods : localProfile.businessPaymentMethods,
-          businessTeamInfo: result.data.team_info || localProfile.businessTeamInfo,
-          businessPricingInfo: result.data.pricing_info || localProfile.businessPricingInfo,
-          businessHours: Object.keys(result.data.business_hours || {}).length ? result.data.business_hours : localProfile.businessHours,
-          businessEmergencyService: result.data.emergency_service ?? localProfile.businessEmergencyService,
+          
+          // Services
+          businessServiceCategories: result.data.service_categories?.length ? result.data.service_categories : localProfile.businessServiceCategories,
+          businessServices: result.data.services?.length ? result.data.services : localProfile.businessServices,
+          businessSubServices: result.data.sub_services?.length ? result.data.sub_services : localProfile.businessSubServices,
+          businessSpecialties: result.data.specialties?.length ? result.data.specialties : localProfile.businessSpecialties,
+          businessBrandsServiced: result.data.brands_serviced?.length ? result.data.brands_serviced : localProfile.businessBrandsServiced,
+          businessBrandsSold: result.data.brands_sold?.length ? result.data.brands_sold : localProfile.businessBrandsSold,
+          businessExclusions: result.data.exclusions?.length ? result.data.exclusions : localProfile.businessExclusions,
+          businessPropertyTypes: result.data.property_types?.length ? result.data.property_types : localProfile.businessPropertyTypes,
+          businessEquipmentLocations: result.data.equipment_locations?.length ? result.data.equipment_locations : localProfile.businessEquipmentLocations,
+          
+          // Operations
           businessServiceArea: {
             cities: result.data.service_area?.cities || localProfile.businessServiceArea?.cities,
             counties: result.data.service_area?.counties || localProfile.businessServiceArea?.counties,
@@ -116,7 +165,45 @@ const KnowledgeBase = () => {
             radius: result.data.service_area?.radius || localProfile.businessServiceArea?.radius,
             description: result.data.service_area?.description || localProfile.businessServiceArea?.description,
           },
+          businessDispatchAddress: result.data.dispatch_address || localProfile.businessDispatchAddress,
+          businessHours: Object.keys(result.data.business_hours || {}).length ? result.data.business_hours : localProfile.businessHours,
+          businessAfterHoursPolicy: result.data.after_hours_policy || localProfile.businessAfterHoursPolicy,
+          businessEmergencyService: result.data.emergency_service ?? localProfile.businessEmergencyService,
+          businessEmergencyDefinition: result.data.emergency_definition || localProfile.businessEmergencyDefinition,
+          businessDispatchFee: result.data.dispatch_fee || localProfile.businessDispatchFee,
           businessLocations: result.data.locations?.length ? result.data.locations : localProfile.businessLocations,
+          
+          // Lead Qualification
+          businessSafetyTriggers: result.data.safety_triggers?.length ? result.data.safety_triggers : localProfile.businessSafetyTriggers,
+          businessDiagnosticQuestions: result.data.diagnostic_questions?.length ? result.data.diagnostic_questions : localProfile.businessDiagnosticQuestions,
+          businessUrgencyLevels: Object.keys(result.data.urgency_levels || {}).length ? result.data.urgency_levels : localProfile.businessUrgencyLevels,
+          
+          // Sales & Finance
+          businessPricingModel: result.data.pricing_model || localProfile.businessPricingModel,
+          businessPricingInfo: result.data.pricing_info || localProfile.businessPricingInfo,
+          businessPaymentMethods: result.data.payment_methods?.length ? result.data.payment_methods : localProfile.businessPaymentMethods,
+          businessFinancingOptions: result.data.financing_options?.length 
+            ? { partners: result.data.financing_options.map(f => f.provider).filter(Boolean) as string[], details: result.data.financing_options.map(f => f.details).filter(Boolean).join('; ') }
+            : localProfile.businessFinancingOptions,
+          businessActivePromotions: result.data.active_promotions?.length 
+            ? result.data.active_promotions.map(p => ({ name: p.name, description: p.description, validUntil: p.expires }))
+            : localProfile.businessActivePromotions,
+          businessDiscounts: result.data.discounts?.length 
+            ? result.data.discounts.reduce((acc, d) => {
+                if (d.type?.toLowerCase().includes('senior')) acc.senior = d.amount;
+                else if (d.type?.toLowerCase().includes('military')) acc.military = d.amount;
+                else acc.other = (acc.other ? acc.other + ', ' : '') + `${d.type}: ${d.amount}`;
+                return acc;
+              }, {} as { senior?: string; military?: string; other?: string })
+            : localProfile.businessDiscounts,
+          
+          // Brand Voice
+          businessCommunicationStyle: result.data.communication_style || localProfile.businessCommunicationStyle,
+          businessKeyPhrases: result.data.key_phrases?.length ? result.data.key_phrases : localProfile.businessKeyPhrases,
+          businessReviewThemes: result.data.review_themes?.length ? result.data.review_themes : localProfile.businessReviewThemes,
+          
+          // Additional
+          businessTeamInfo: result.data.team_info || localProfile.businessTeamInfo,
           businessFaqs: result.data.faqs?.length ? result.data.faqs : localProfile.businessFaqs,
           businessSocialLinks: Object.keys(result.data.social_links || {}).length ? result.data.social_links : localProfile.businessSocialLinks,
           businessColors: Object.keys(result.data.colors || {}).length ? result.data.colors : localProfile.businessColors,
