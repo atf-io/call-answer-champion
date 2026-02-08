@@ -69,7 +69,25 @@ export function useCrmConnections() {
     },
     onSuccess: (data) => {
       if (data.auth_url) {
-        window.location.href = data.auth_url;
+        // Open OAuth in a popup window to avoid iframe restrictions
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        
+        const popup = window.open(
+          data.auth_url,
+          'jobber-oauth',
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+        
+        if (!popup) {
+          // Popup was blocked, fall back to redirect
+          toast.info('Popup blocked - redirecting to Jobber...');
+          window.open(data.auth_url, '_blank');
+        } else {
+          toast.info('Complete authorization in the popup window');
+        }
       } else if (data.success) {
         // Demo mode - refresh connections
         queryClient.invalidateQueries({ queryKey: ['crm-connections'] });
