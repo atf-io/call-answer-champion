@@ -359,6 +359,20 @@ const AgentEdit = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="prompt">System Prompt</Label>
+                  <Textarea
+                    id="prompt"
+                    value={formData.prompt || ""}
+                    onChange={(e) => handleChange({ prompt: e.target.value })}
+                    placeholder="You are a helpful customer service agent for [Business Name]. Your goal is to..."
+                    className="min-h-[200px] font-mono text-sm"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    The complete system prompt that governs how the AI agent behaves. This defines the agent's instructions, personality, and capabilities.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Active Days</Label>
                   <div className="flex gap-2">
                     {daysOfWeek.map((day) => (
@@ -888,6 +902,20 @@ const AgentEdit = () => {
                     />
                     <p className="text-sm text-muted-foreground">
                       The first message sent when a conversation starts
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="prompt-chat">System Prompt</Label>
+                    <Textarea
+                      id="prompt-chat"
+                      value={formData.prompt || ""}
+                      onChange={(e) => handleChange({ prompt: e.target.value })}
+                      placeholder="You are a customer service representative for [Business Name]. Your goal is to quickly and accurately gather information from potential customers..."
+                      className="min-h-[200px] font-mono text-sm"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      The complete system prompt that governs how the AI agent behaves. This defines the agent's instructions, personality, and capabilities.
                     </p>
                   </div>
 
