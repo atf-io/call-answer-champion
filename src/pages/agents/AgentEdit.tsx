@@ -165,7 +165,8 @@ const AgentEdit = () => {
     const keywords = keywordsInput.split(",").map(k => k.trim()).filter(Boolean);
     const dataToSubmit = { 
       ...formData, 
-      boosted_keywords: keywords.length > 0 ? keywords : null 
+      boosted_keywords: keywords.length > 0 ? keywords : null,
+      crm_config: crmConfig
     };
     
     const result = await updateAgent(agentId, dataToSubmit);

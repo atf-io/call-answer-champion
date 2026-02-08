@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import AgentLayout from "@/components/agents/AgentLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, Send, RotateCcw, Loader2, Bot, User, TestTube } from "lucide-react";
+import { MessageSquare, Send, RotateCcw, Loader2, Bot, User, TestTube, Calendar } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { buildSchedulingContext } from "@/lib/buildSchedulingContext";
+import type { AgentCrmConfig } from "@/lib/crm/types";
 
 interface ChatMessage {
   role: "user" | "agent";
@@ -48,6 +50,15 @@ const SmsSimulator = () => {
   );
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  
+  // Get CRM config with scheduling settings for the selected agent
+  const crmConfig = selectedAgent?.crm_config as AgentCrmConfig | null | undefined;
+  const schedulingConfig = crmConfig?.scheduling_config;
+  
+  // Get allowed services from CRM config for the service preset dropdown
+  const allowedServices = useMemo(() => {
+    return schedulingConfig?.allowed_products_or_services || [];
+  }, [schedulingConfig]);
   
   // Check if the selected agent is a Speed to Lead/SMS type (uses local AI instead of Retell)
   const isSpeedToLeadAgent = selectedAgent && (
@@ -130,7 +141,10 @@ const SmsSimulator = () => {
     const basePrompt = selectedAgent.prompt || 
       `You are a helpful customer service agent for a home services business. Your personality is: ${selectedAgent.personality || "friendly and professional"}. Keep responses concise and helpful.`;
     
-    const contextPrompt = `${basePrompt}\n\nCurrent lead information:\n- Lead Name: ${leadName}\n- Service Requested: ${serviceType}\n\nAddress the customer by their name when appropriate.`;
+    // Inject scheduling context if CRM scheduling is enabled
+    const schedulingContext = buildSchedulingContext(schedulingConfig);
+    
+    const contextPrompt = `${schedulingContext}${basePrompt}\n\nCurrent lead information:\n- Lead Name: ${leadName}\n- Service Requested: ${serviceType}\n\nAddress the customer by their name when appropriate.`;
     
     try {
       const { data, error } = await supabase.functions.invoke("sms-simulator", {
@@ -156,7 +170,7 @@ const SmsSimulator = () => {
         timestamp: new Date() 
       }]);
     }
-  }, [selectedAgent, messages, leadName, serviceType]);
+  }, [selectedAgent, messages, leadName, serviceType, schedulingConfig]);
 
   const sendMessage = useCallback(async () => {
     if (!chatId || !inputMessage.trim()) return;
@@ -296,13 +310,35 @@ const SmsSimulator = () => {
                 disabled={!!chatId}
               />
               
-              <Input
-                value={serviceType}
-                onChange={(e) => setServiceType(e.target.value)}
-                placeholder="Service type"
-                className="w-40"
-                disabled={!!chatId}
-              />
+              {/* Service type - show dropdown if CRM services configured, otherwise freeform input */}
+              {allowedServices.length > 0 ? (
+                <Select
+                  value={serviceType}
+                  onValueChange={setServiceType}
+                  disabled={!!chatId}
+                >
+                  <SelectTrigger className="w-48">
+                    <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Select service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowedServices.map((service) => (
+                      <SelectItem key={service.id} value={service.name}>
+                        {service.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Other (type below)</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={serviceType}
+                  onChange={(e) => setServiceType(e.target.value)}
+                  placeholder="Service type"
+                  className="w-40"
+                  disabled={!!chatId}
+                />
+              )}
 
               {selectedAgentId && !chatId && (
                 <Button

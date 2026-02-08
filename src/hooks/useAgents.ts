@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import type { AgentCrmConfig } from "@/lib/crm/types";
 
 export interface Agent {
   id: string;
@@ -42,6 +43,7 @@ export interface Agent {
   boosted_keywords: string[] | null;
   reminder_trigger_ms: number | null;
   reminder_max_count: number | null;
+  crm_config: AgentCrmConfig | null;
 }
 
 export interface CreateAgentData {
@@ -75,6 +77,7 @@ export interface CreateAgentData {
   boosted_keywords?: string[];
   reminder_trigger_ms?: number;
   reminder_max_count?: number;
+  crm_config?: AgentCrmConfig | null;
 }
 
 function mapAgentFromDb(data: any): Agent {
@@ -117,6 +120,7 @@ function mapAgentFromDb(data: any): Agent {
     boosted_keywords: data.boosted_keywords,
     reminder_trigger_ms: data.reminder_trigger_ms,
     reminder_max_count: data.reminder_max_count,
+    crm_config: data.crm_config ?? null,
   };
 }
 
@@ -208,9 +212,16 @@ export const useAgents = () => {
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateAgentData> }) => {
       if (!user) throw new Error('Not authenticated');
       
+      // Extract crm_config and cast to Json for Supabase compatibility
+      const { crm_config, ...restUpdates } = updates;
+      const dbUpdates: Record<string, unknown> = { ...restUpdates };
+      if (crm_config !== undefined) {
+        dbUpdates.crm_config = crm_config as unknown;
+      }
+      
       const { data, error } = await supabase
         .from('ai_agents')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
