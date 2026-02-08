@@ -1241,11 +1241,15 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          delivered_at: string | null
+          delivery_error: string | null
+          delivery_status: string | null
           id: string
           is_follow_up: boolean | null
           is_greeting: boolean | null
           metadata: Json | null
           response_time_ms: number | null
+          retell_message_id: string | null
           sender_type: string
           tokens_used: number | null
         }
@@ -1253,11 +1257,15 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          delivered_at?: string | null
+          delivery_error?: string | null
+          delivery_status?: string | null
           id?: string
           is_follow_up?: boolean | null
           is_greeting?: boolean | null
           metadata?: Json | null
           response_time_ms?: number | null
+          retell_message_id?: string | null
           sender_type: string
           tokens_used?: number | null
         }
@@ -1265,11 +1273,15 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          delivered_at?: string | null
+          delivery_error?: string | null
+          delivery_status?: string | null
           id?: string
           is_follow_up?: boolean | null
           is_greeting?: boolean | null
           metadata?: Json | null
           response_time_ms?: number | null
+          retell_message_id?: string | null
           sender_type?: string
           tokens_used?: number | null
         }
