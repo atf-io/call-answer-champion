@@ -32,7 +32,8 @@ import type {
   SyncTriggers, 
   AgentSchedulingConfig,
   FieldMapping,
-  CrmType 
+  CrmType,
+  NoteDestination
 } from '@/lib/crm/types';
 
 interface AgentCrmSettingsProps {
@@ -43,11 +44,18 @@ interface AgentCrmSettingsProps {
 }
 
 const DEFAULT_COMMUNICATION_SETTINGS: CommunicationSettings = {
-  note_destination: 'client_notes',
+  note_destinations: ['client_notes'],
   include_transcript: true,
   include_sentiment: true,
   note_prefix: '[VoiceHub]',
 };
+
+const NOTE_DESTINATION_OPTIONS: { value: NoteDestination; label: string; description: string }[] = [
+  { value: 'client_notes', label: 'Client Notes', description: 'Add to client record notes' },
+  { value: 'job_notes', label: 'Job Notes', description: 'Add to job/work order notes' },
+  { value: 'request_notes', label: 'Request Notes', description: 'Add to service request notes' },
+  { value: 'custom_field', label: 'Custom Field', description: 'Map to a specific custom field' },
+];
 
 const DEFAULT_SYNC_TRIGGERS: SyncTriggers = {
   on_message_sent: false,
@@ -263,30 +271,46 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
           {/* Communication Settings Tab */}
           <TabsContent value="communication" className="space-y-6">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Note Destination</Label>
-                <Select
-                  value={localConfig.communication_settings.note_destination}
-                  onValueChange={(value: CommunicationSettings['note_destination']) => 
-                    handleCommunicationUpdate({ note_destination: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="client_notes">Client Notes</SelectItem>
-                    <SelectItem value="job_notes">Job Notes</SelectItem>
-                    <SelectItem value="request_notes">Request Notes</SelectItem>
-                    <SelectItem value="custom_field">Custom Field</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Where {agentType === 'voice' ? 'call transcripts and' : ''} conversation logs will be saved in {selectedCrmConfig.name}
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <Label>Note Destinations</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select where {agentType === 'voice' ? 'call transcripts and' : ''} conversation logs will be saved in {selectedCrmConfig.name}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {NOTE_DESTINATION_OPTIONS.map((option) => {
+                    const isSelected = localConfig.communication_settings.note_destinations.includes(option.value);
+                    return (
+                      <div
+                        key={option.value}
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => {
+                          const current = localConfig.communication_settings.note_destinations;
+                          const updated = isSelected
+                            ? current.filter(d => d !== option.value)
+                            : [...current, option.value];
+                          handleCommunicationUpdate({ note_destinations: updated.length > 0 ? updated : ['client_notes'] });
+                        }}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => {}}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <Label className="cursor-pointer font-medium">{option.label}</Label>
+                          <p className="text-xs text-muted-foreground">{option.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {localConfig.communication_settings.note_destination === 'custom_field' && (
+              {localConfig.communication_settings.note_destinations.includes('custom_field') && (
                 <div className="space-y-2">
                   <Label>Custom Field ID</Label>
                   <Input

@@ -33,8 +33,10 @@ export interface AgentCrmConfig {
   field_mapping: FieldMapping[];
 }
 
+export type NoteDestination = 'client_notes' | 'job_notes' | 'request_notes' | 'custom_field';
+
 export interface CommunicationSettings {
-  note_destination: 'client_notes' | 'job_notes' | 'request_notes' | 'custom_field';
+  note_destinations: NoteDestination[];
   custom_field_id?: string;
   include_transcript: boolean;
   include_sentiment: boolean;
