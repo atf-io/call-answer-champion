@@ -10,6 +10,7 @@ import { MessageSquare, Send, RotateCcw, Loader2, Bot, User, TestTube } from "lu
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
   role: "user" | "agent";
@@ -29,20 +30,55 @@ const SmsSimulator = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isLocalMode, setIsLocalMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Include both Chat Agents AND Speed to Lead/SMS agents
   const chatAgents = agents.filter(
-    (a) => a.voice_type === "Chat Agent" || a.voice_model === "chat" || a.voice_id === "chat-agent"
+    (a) => 
+      a.voice_type === "Chat Agent" || 
+      a.voice_model === "chat" || 
+      a.voice_id === "chat-agent" ||
+      a.voice_type === "Speed to Lead" ||
+      a.voice_id === "sms-agent" ||
+      a.voice_model === "sms"
   );
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  
+  // Check if the selected agent is a Speed to Lead/SMS type (uses local AI instead of Retell)
+  const isSpeedToLeadAgent = selectedAgent && (
+    selectedAgent.voice_type === "Speed to Lead" ||
+    selectedAgent.voice_id === "sms-agent" ||
+    selectedAgent.voice_model === "sms"
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const startChat = useCallback(async () => {
+    if (isSpeedToLeadAgent) {
+      // For Speed to Lead agents, use local AI simulation
+      setIsLocalMode(true);
+      setChatId("local-" + Date.now());
+      setMessages([]);
+      
+      // Send greeting if available
+      if (selectedAgent?.greeting_message) {
+        setMessages([{
+          role: "agent",
+          content: selectedAgent.greeting_message.replace(/\{[^}]+\}/g, "[Customer]"),
+          timestamp: new Date()
+        }]);
+      }
+      
+      toast({ title: "Chat started", description: `Testing ${selectedAgent?.name} locally` });
+      return;
+    }
+    
+    // For Retell Chat Agents
     if (!selectedAgent?.retell_agent_id) {
       toast({
         variant: "destructive",
@@ -58,6 +94,7 @@ const SmsSimulator = () => {
         chatAgentId: selectedAgent.retell_agent_id,
       });
       setChatId((data as any).chat_id);
+      setIsLocalMode(false);
       setMessages([]);
       toast({ title: "Chat started", description: `Connected to ${selectedAgent.name}` });
     } catch (error) {
@@ -69,7 +106,46 @@ const SmsSimulator = () => {
     } finally {
       setIsStarting(false);
     }
-  }, [selectedAgent, retell, toast]);
+  }, [selectedAgent, isSpeedToLeadAgent, retell, toast]);
+
+  const sendLocalMessage = useCallback(async (userMessage: string) => {
+    if (!selectedAgent) return;
+    
+    // Build conversation history for context
+    const conversationHistory = messages.map(msg => ({
+      role: msg.role === "user" ? "user" : "assistant",
+      content: msg.content
+    }));
+    
+    // Build the system prompt from agent config
+    const systemPrompt = selectedAgent.prompt || 
+      `You are a helpful customer service agent for a home services business. Your personality is: ${selectedAgent.personality || "friendly and professional"}. Keep responses concise and helpful.`;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("sms-simulator", {
+        body: {
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...conversationHistory,
+            { role: "user", content: userMessage }
+          ]
+        }
+      });
+      
+      if (error) throw error;
+      
+      const agentResponse = data?.response || data?.content || "I apologize, but I couldn't generate a response. Please try again.";
+      setMessages(prev => [...prev, { role: "agent", content: agentResponse, timestamp: new Date() }]);
+    } catch (error) {
+      console.error("Local AI error:", error);
+      // Fallback response if edge function fails
+      setMessages(prev => [...prev, { 
+        role: "agent", 
+        content: "I'm having trouble connecting. Please check that the SMS simulator edge function is deployed.", 
+        timestamp: new Date() 
+      }]);
+    }
+  }, [selectedAgent, messages]);
 
   const sendMessage = useCallback(async () => {
     if (!chatId || !inputMessage.trim()) return;
@@ -80,21 +156,25 @@ const SmsSimulator = () => {
     setIsSending(true);
 
     try {
-      const data = await retell.invokeRetellSync("send-chat-message", {
-        chatId,
-        message: userMessage,
-      });
-      const responseData = data as any;
-      const agentMessages = responseData.messages || [];
-      let hasAgentReply = false;
-      for (const msg of agentMessages) {
-        if ((msg.role === "agent" || msg.role === "assistant") && msg.content) {
-          setMessages((prev) => [...prev, { role: "agent", content: msg.content, timestamp: new Date() }]);
-          hasAgentReply = true;
+      if (isLocalMode) {
+        await sendLocalMessage(userMessage);
+      } else {
+        const data = await retell.invokeRetellSync("send-chat-message", {
+          chatId,
+          message: userMessage,
+        });
+        const responseData = data as any;
+        const agentMessages = responseData.messages || [];
+        let hasAgentReply = false;
+        for (const msg of agentMessages) {
+          if ((msg.role === "agent" || msg.role === "assistant") && msg.content) {
+            setMessages((prev) => [...prev, { role: "agent", content: msg.content, timestamp: new Date() }]);
+            hasAgentReply = true;
+          }
         }
-      }
-      if (!hasAgentReply && responseData.content) {
-        setMessages((prev) => [...prev, { role: "agent", content: responseData.content, timestamp: new Date() }]);
+        if (!hasAgentReply && responseData.content) {
+          setMessages((prev) => [...prev, { role: "agent", content: responseData.content, timestamp: new Date() }]);
+        }
       }
     } catch (error) {
       toast({
@@ -105,21 +185,24 @@ const SmsSimulator = () => {
     } finally {
       setIsSending(false);
     }
-  }, [chatId, inputMessage, retell, toast]);
+  }, [chatId, inputMessage, isLocalMode, retell, toast, sendLocalMessage]);
 
   const endChat = useCallback(async () => {
     if (!chatId) return;
     setIsEnding(true);
     try {
-      await retell.invokeRetellSync("end-chat", { chatId });
+      if (!isLocalMode) {
+        await retell.invokeRetellSync("end-chat", { chatId });
+      }
       toast({ title: "Chat ended" });
     } catch (error) {
       console.error("Failed to end chat:", error);
     } finally {
       setChatId(null);
+      setIsLocalMode(false);
       setIsEnding(false);
     }
-  }, [chatId, retell, toast]);
+  }, [chatId, isLocalMode, retell, toast]);
 
   const resetChat = useCallback(async () => {
     if (chatId) {
@@ -127,6 +210,7 @@ const SmsSimulator = () => {
     }
     setMessages([]);
     setChatId(null);
+    setIsLocalMode(false);
   }, [chatId, endChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -138,7 +222,7 @@ const SmsSimulator = () => {
 
   if (agentsLoading) {
     return (
-      <AgentLayout title="Chat Simulator" description="Test your chat agents in a simulated conversation">
+      <AgentLayout title="Chat Simulator" description="Test your chat and SMS agents in a simulated conversation">
         <Card>
           <CardContent className="py-8">
             <Skeleton className="h-64 w-full" />
@@ -150,15 +234,15 @@ const SmsSimulator = () => {
 
   if (chatAgents.length === 0) {
     return (
-      <AgentLayout title="Chat Simulator" description="Test your chat agents in a simulated conversation">
+      <AgentLayout title="Chat Simulator" description="Test your chat and SMS agents in a simulated conversation">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <TestTube className="w-16 h-16 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold mb-2" data-testid="text-sms-simulator-empty">
-              No Chat Agents Found
+              No Chat or SMS Agents Found
             </h3>
             <p className="text-muted-foreground text-center max-w-md">
-              Sync your Chat Agents from Retell AI first using the "Sync from Retell AI" button on the Agents page, then come back here to test conversations.
+              Create a Chat Agent or Speed to Lead agent first, then come back here to test conversations.
             </p>
           </CardContent>
         </Card>
@@ -167,7 +251,7 @@ const SmsSimulator = () => {
   }
 
   return (
-    <AgentLayout title="Chat Simulator" description="Test your chat agents in a simulated conversation">
+    <AgentLayout title="Chat Simulator" description="Test your chat and SMS agents in a simulated conversation">
       <div className="flex flex-col gap-4 h-[calc(100vh-12rem)]">
         <Card>
           <CardContent className="py-3">
@@ -180,12 +264,14 @@ const SmsSimulator = () => {
                 }}
               >
                 <SelectTrigger className="w-64" data-testid="select-chat-agent">
-                  <SelectValue placeholder="Select a chat agent" />
+                  <SelectValue placeholder="Select an agent" />
                 </SelectTrigger>
                 <SelectContent>
                   {chatAgents.map((agent) => (
                     <SelectItem key={agent.id} value={agent.id}>
                       {agent.name}
+                      {(agent.voice_type === "Speed to Lead" || agent.voice_id === "sms-agent" || agent.voice_model === "sms") && 
+                        " (SMS)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -206,7 +292,7 @@ const SmsSimulator = () => {
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="gap-1">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    Connected
+                    {isLocalMode ? "Local AI" : "Connected"}
                   </Badge>
                   <Button
                     variant="outline"
@@ -229,17 +315,18 @@ const SmsSimulator = () => {
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               {selectedAgent ? selectedAgent.name : "Conversation"}
+              {isLocalMode && <Badge variant="outline" className="ml-2 text-xs">Testing with Lovable AI</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && !chatId && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
-                <p className="text-sm">Select a chat agent and start a conversation</p>
+                <p className="text-sm">Select an agent and start a conversation</p>
               </div>
             )}
 
-            {messages.length === 0 && chatId && (
+            {messages.length === 0 && chatId && !isLocalMode && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
                 <p className="text-sm">Chat connected. Send a message to begin.</p>
