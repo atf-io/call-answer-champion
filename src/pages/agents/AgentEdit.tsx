@@ -12,8 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Loader2, Volume2, Mic, Clock, Settings2, Phone, Trash2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Volume2, Mic, Clock, Settings2, Phone, Trash2, RefreshCw, Wand2 } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
+import { useBusinessProfile } from "@/hooks/useBusinessProfile";
+import { generateAgentPrompt } from "@/lib/generateAgentPrompt";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -98,6 +100,7 @@ const AgentEdit = () => {
   const { agentId } = useParams<{ agentId: string }>();
   const navigate = useNavigate();
   const { agents, loading, updateAgent, deleteAgent, refetch } = useAgents();
+  const { profile: businessProfile } = useBusinessProfile();
   
   const [formData, setFormData] = useState<Partial<Agent>>({});
   const [saving, setSaving] = useState(false);
@@ -122,6 +125,24 @@ const AgentEdit = () => {
   const handleChange = (updates: Partial<Agent>) => {
     setFormData(prev => ({ ...prev, ...updates }));
     setHasChanges(true);
+  };
+
+  const handleImportFromBusinessProfile = () => {
+    if (!businessProfile) {
+      toast.error("No business profile found. Please configure your Business Profile first.");
+      return;
+    }
+    
+    const agentType = isVoiceAgent ? 'voice' : 'sms';
+    const generatedPrompt = generateAgentPrompt({
+      agentType,
+      profile: businessProfile,
+      includeCalendar: true,
+      includeTransfer: true,
+    });
+    
+    handleChange({ prompt: generatedPrompt });
+    toast.success(`${isVoiceAgent ? 'Voice' : 'SMS'} prompt imported from Business Profile`);
   };
 
   const toggleDay = (day: string) => {
@@ -359,7 +380,18 @@ const AgentEdit = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="prompt">System Prompt</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="prompt">System Prompt</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleImportFromBusinessProfile}
+                    >
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      Import from Business Profile
+                    </Button>
+                  </div>
                   <Textarea
                     id="prompt"
                     value={formData.prompt || ""}
@@ -906,7 +938,18 @@ const AgentEdit = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="prompt-chat">System Prompt</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="prompt-chat">System Prompt</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleImportFromBusinessProfile}
+                      >
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Import from Business Profile
+                      </Button>
+                    </div>
                     <Textarea
                       id="prompt-chat"
                       value={formData.prompt || ""}
