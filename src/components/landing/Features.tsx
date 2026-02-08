@@ -4,7 +4,7 @@ const features = [
   {
     icon: Phone,
     title: "AI Voice Agents",
-    description: "Natural conversations powered by Retell.ai. Your callers won't know they're talking to AI.",
+    description: "Natural conversations powered by cutting-edge AI. Your callers won't know they're talking to AI.",
   },
   {
     icon: Clock,
@@ -45,17 +45,18 @@ const features = [
 
 const Features = () => {
   return (
-    <section id="features" className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/20 to-background" />
+    <section id="features" className="py-32 relative">
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-card/30 to-background" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-6">
+        <div className="text-center max-w-2xl mx-auto mb-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-gradient mb-6">
             <Zap className="w-4 h-4 text-primary" />
             <span className="text-sm text-muted-foreground">Powerful Features</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-            Everything You Need
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
+            <span className="text-gradient">Everything</span> you need
           </h2>
           <p className="text-lg text-muted-foreground">
             From AI-powered calls to automated review responses, we've got you covered.
@@ -66,13 +67,13 @@ const Features = () => {
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className="group glass rounded-2xl p-6 hover:shadow-elevated transition-all duration-500 cursor-pointer"
+              className="group glass rounded-2xl p-6 hover:shadow-elevated transition-all duration-500 cursor-pointer border border-border/50 hover:border-primary/30"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                 <feature.icon className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+              <h3 className="text-lg font-semibold mb-2 text-foreground group-hover:text-primary transition-colors">
                 {feature.title}
               </h3>
               <p className="text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Phone, Star, LayoutDashboard } from "lucide-react";
+import { Menu, X, Sparkles } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navbar = () => {
@@ -8,12 +8,11 @@ const Navbar = () => {
   const location = useLocation();
 
   const navLinks = [
-    { name: "Features", href: "#features" },
-    { name: "How It Works", href: "#how-it-works" },
+    { name: "Product", href: "#features" },
+    { name: "Solutions", href: "#how-it-works" },
     { name: "Pricing", href: "#pricing" },
+    { name: "Docs", href: "#" },
   ];
-
-  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-strong">
@@ -21,10 +20,10 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
-              <Phone className="w-5 h-5 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">VoiceHub</span>
+            <span className="text-xl font-bold text-foreground">Kinch AI</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -44,13 +43,14 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-3">
             <Link to="/dashboard">
               <Button variant="ghost" size="sm">
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-                Dashboard
+                Sign In
               </Button>
             </Link>
-            <Button variant="hero" size="sm">
-              Get Started
-            </Button>
+            <Link to="/dashboard">
+              <Button variant="hero" size="sm">
+                Book Demo
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -79,13 +79,14 @@ const Navbar = () => {
               <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
                 <Link to="/dashboard">
                   <Button variant="ghost" className="w-full justify-start">
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Dashboard
+                    Sign In
                   </Button>
                 </Link>
-                <Button variant="hero" className="w-full">
-                  Get Started
-                </Button>
+                <Link to="/dashboard">
+                  <Button variant="hero" className="w-full">
+                    Book Demo
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
