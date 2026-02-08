@@ -6,18 +6,18 @@ import { toast } from 'sonner';
 // Stripe product and price IDs
 export const SUBSCRIPTION_PLANS = {
   starter: {
-    name: 'Starter',
+    name: 'Started',
     product_id: 'prod_TwX2BkzBiDXJA1',
     price_id: 'price_1SydyfRtSnQCeIF27E3vYW5P',
-    price: 49,
+    price: 299,
     minutes: 500,
     agents: 1,
   },
   professional: {
-    name: 'Professional',
+    name: 'Growth',
     product_id: 'prod_TwX3jrpPdYVOHn',
     price_id: 'price_1SydyvRtSnQCeIF2gc4WGoeR',
-    price: 99,
+    price: 499,
     minutes: 1500,
     agents: 3,
   },
@@ -25,7 +25,7 @@ export const SUBSCRIPTION_PLANS = {
     name: 'Enterprise',
     product_id: 'prod_TwX3QEXXTnpTXK',
     price_id: 'price_1SydzFRtSnQCeIF2tBZsSFtT',
-    price: 249,
+    price: 899,
     minutes: 5000,
     agents: 10,
   },
