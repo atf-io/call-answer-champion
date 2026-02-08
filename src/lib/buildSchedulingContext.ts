@@ -48,7 +48,26 @@ When scheduling:
 
   context += `
 
-IMPORTANT: If a customer asks to schedule a service that is NOT in the list above, politely explain that you can only schedule the services listed and offer to help with those instead.
+## Function Calling
+
+When the customer confirms they want to book an appointment, you MUST use the book_appointment function by including this exact format in your response:
+
+[FUNCTION:book_appointment]
+{
+  "service_name": "the service they requested",
+  "preferred_date": "YYYY-MM-DD format if provided",
+  "preferred_time": "HH:MM format if provided, or 'morning'/'afternoon'/'evening'",
+  "notes": "any special notes or requests from the customer"
+}
+[/FUNCTION]
+
+After including the function call, add a friendly confirmation message. The system will execute the booking and provide a confirmation number.
+
+IMPORTANT RULES:
+1. If a customer asks to schedule a service NOT in the list above, politely explain you can only schedule the listed services
+2. Always collect: service type, preferred date/time before booking
+3. Confirm details with the customer before calling the function
+4. Include the function call in your response when the customer confirms
 `;
 
   return context;

@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, Send, RotateCcw, Loader2, Bot, User, TestTube, Calendar } from "lucide-react";
+import { MessageSquare, Send, RotateCcw, Loader2, Bot, User, TestTube, Calendar, CheckCircle } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useRetell } from "@/hooks/useRetell";
 import { useToast } from "@/hooks/use-toast";
+import { useCrmConnections } from "@/hooks/useCrmConnections";
 import { supabase } from "@/integrations/supabase/client";
 import { buildSchedulingContext } from "@/lib/buildSchedulingContext";
 import type { AgentCrmConfig } from "@/lib/crm/types";
@@ -18,12 +19,44 @@ interface ChatMessage {
   role: "user" | "agent";
   content: string;
   timestamp: Date;
+  functionResult?: {
+    success: boolean;
+    confirmation?: string;
+  };
+}
+
+interface FunctionCall {
+  name: string;
+  params: Record<string, unknown>;
+}
+
+// Parse function calls from AI response
+function parseFunctionCalls(response: string): { cleanResponse: string; functions: FunctionCall[] } {
+  const functions: FunctionCall[] = [];
+  const functionRegex = /\[FUNCTION:(\w+)\]\s*(\{[\s\S]*?\})\s*\[\/FUNCTION\]/g;
+  
+  let cleanResponse = response;
+  let match;
+  
+  while ((match = functionRegex.exec(response)) !== null) {
+    const [fullMatch, functionName, paramsJson] = match;
+    try {
+      const params = JSON.parse(paramsJson);
+      functions.push({ name: functionName, params });
+      cleanResponse = cleanResponse.replace(fullMatch, '').trim();
+    } catch (e) {
+      console.error('Failed to parse function params:', e);
+    }
+  }
+  
+  return { cleanResponse, functions };
 }
 
 const SmsSimulator = () => {
   const { agents, loading: agentsLoading } = useAgents();
   const { toast } = useToast();
   const retell = useRetell();
+  const { connections } = useCrmConnections();
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [chatId, setChatId] = useState<string | null>(null);
@@ -34,6 +67,7 @@ const SmsSimulator = () => {
   const [isEnding, setIsEnding] = useState(false);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [leadName, setLeadName] = useState("John");
+  const [leadPhone] = useState("+1555123456");
   const [serviceType, setServiceType] = useState("HVAC repair");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,12 +94,62 @@ const SmsSimulator = () => {
     return schedulingConfig?.allowed_products_or_services || [];
   }, [schedulingConfig]);
   
+  // Get Jobber connection for function execution
+  const jobberConnection = useMemo(() => {
+    return connections.find(c => c.crm_type === 'jobber' && c.is_active);
+  }, [connections]);
+  
   // Check if the selected agent is a Speed to Lead/SMS type (uses local AI instead of Retell)
   const isSpeedToLeadAgent = selectedAgent && (
     selectedAgent.voice_type === "Speed to Lead" ||
     selectedAgent.voice_id === "sms-agent" ||
     selectedAgent.voice_model === "sms"
   );
+
+  // Execute a function call (e.g., book_appointment)
+  const executeFunction = useCallback(async (fn: FunctionCall): Promise<{ success: boolean; message: string }> => {
+    console.log('Executing function:', fn.name, fn.params);
+    
+    if (fn.name === 'book_appointment') {
+      if (!jobberConnection) {
+        return { 
+          success: false, 
+          message: 'No Jobber connection configured. Please connect Jobber in CRM settings to enable real bookings.' 
+        };
+      }
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('jobber-booking', {
+          body: {
+            action: 'create_request',
+            connection_id: jobberConnection.id,
+            customer_phone: leadPhone,
+            customer_name: leadName,
+            service_name: fn.params.service_name || serviceType,
+            preferred_date: fn.params.preferred_date,
+            preferred_time: fn.params.preferred_time,
+            notes: fn.params.notes,
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data?.success) {
+          return {
+            success: true,
+            message: data.confirmation_message || `Appointment booked! Confirmation: ${data.confirmation_number || 'Pending'}`
+          };
+        } else {
+          return { success: false, message: data?.error || 'Failed to create booking' };
+        }
+      } catch (err) {
+        console.error('Booking function error:', err);
+        return { success: false, message: err instanceof Error ? err.message : 'Booking failed' };
+      }
+    }
+    
+    return { success: false, message: `Unknown function: ${fn.name}` };
+  }, [jobberConnection, leadPhone, leadName, serviceType]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -159,8 +243,41 @@ const SmsSimulator = () => {
       
       if (error) throw error;
       
-      const agentResponse = data?.response || data?.content || "I apologize, but I couldn't generate a response. Please try again.";
-      setMessages(prev => [...prev, { role: "agent", content: agentResponse, timestamp: new Date() }]);
+      const rawResponse = data?.response || data?.content || "I apologize, but I couldn't generate a response. Please try again.";
+      
+      // Parse for function calls
+      const { cleanResponse, functions } = parseFunctionCalls(rawResponse);
+      
+      // Execute any function calls
+      let functionResult: ChatMessage['functionResult'] | undefined;
+      if (functions.length > 0) {
+        for (const fn of functions) {
+          const result = await executeFunction(fn);
+          functionResult = { success: result.success, confirmation: result.message };
+          
+          // Show toast for booking results
+          if (result.success) {
+            toast({
+              title: "Booking Created!",
+              description: result.message,
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Booking Failed",
+              description: result.message,
+            });
+          }
+        }
+      }
+      
+      // Add message with any function result
+      setMessages(prev => [...prev, { 
+        role: "agent", 
+        content: cleanResponse || rawResponse, 
+        timestamp: new Date(),
+        functionResult 
+      }]);
     } catch (error) {
       console.error("Local AI error:", error);
       // Fallback response if edge function fails
@@ -170,7 +287,7 @@ const SmsSimulator = () => {
         timestamp: new Date() 
       }]);
     }
-  }, [selectedAgent, messages, leadName, serviceType, schedulingConfig]);
+  }, [selectedAgent, messages, leadName, serviceType, schedulingConfig, executeFunction, toast]);
 
   const sendMessage = useCallback(async () => {
     if (!chatId || !inputMessage.trim()) return;
@@ -407,17 +524,29 @@ const SmsSimulator = () => {
                     <Bot className="w-4 h-4 text-blue-500" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                  <p className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+                <div className="max-w-[75%] space-y-2">
+                  <div
+                    className={`rounded-lg px-4 py-2.5 text-sm ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  {msg.functionResult && (
+                    <div className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 ${
+                      msg.functionResult.success 
+                        ? "bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20" 
+                        : "bg-destructive/10 text-destructive border border-destructive/20"
+                    }`}>
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs">{msg.functionResult.confirmation}</span>
+                    </div>
+                  )}
                 </div>
                 {msg.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
