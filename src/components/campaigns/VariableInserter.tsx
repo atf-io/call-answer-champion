@@ -53,9 +53,9 @@ const VariableInserter = ({ onInsert }: VariableInserterProps) => {
           Insert Variable
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="start">
-        <ScrollArea className="max-h-72">
-          <div className="space-y-1">
+      <PopoverContent className="w-64 p-0" align="start">
+        <ScrollArea className="h-72">
+          <div className="p-2 space-y-1">
             {variableGroups.map((group, gi) => (
               <div key={group.label}>
                 {gi > 0 && <Separator className="my-1.5" />}
@@ -66,7 +66,7 @@ const VariableInserter = ({ onInsert }: VariableInserterProps) => {
                   <button
                     key={v.value}
                     onClick={() => onInsert(v.value)}
-                    className="w-full text-left px-2 py-1.5 text-sm rounded-md hover-elevate transition-colors"
+                    className="w-full text-left px-2 py-1.5 text-sm rounded-md hover:bg-accent transition-colors"
                     data-testid={`button-variable-${v.label.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     <span className="font-medium">{v.label}</span>
