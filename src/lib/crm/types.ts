@@ -1,4 +1,4 @@
-// CRM Types for VoiceHub integration
+// CRM Types for Kinch AI integration
 
 export type CrmType = 'jobber' | 'servicetitan' | 'housecall_pro';
 
@@ -62,7 +62,7 @@ export interface AgentSchedulingConfig {
 }
 
 export interface FieldMapping {
-  voicehub_field: string;
+  kinch_field: string;
   crm_field_id: string;
   crm_field_name: string;
   is_required: boolean;

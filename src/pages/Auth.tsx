@@ -152,7 +152,7 @@ const Auth = () => {
           <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
             <Phone className="w-6 h-6 text-primary-foreground" />
           </div>
-          <span className="text-2xl font-bold">VoiceHub</span>
+          <span className="text-2xl font-bold">Kinch AI</span>
         </div>
 
         <div className="glass rounded-2xl p-8">
@@ -163,7 +163,7 @@ const Auth = () => {
             <p className="text-muted-foreground">
               {isLogin 
                 ? "Sign in to access your dashboard" 
-                : "Get started with VoiceHub today"}
+                : "Get started with Kinch AI today"}
             </p>
           </div>
 
