@@ -1026,15 +1026,45 @@ async function createWebCall(
     // Create a temporary agent for testing
     console.log("Creating temporary test agent with config:", testConfig);
     
+    // First create an LLM for the test agent (required by Retell API)
+    const llmResponse = await fetch(`${RETELL_BASE_URL}/create-retell-llm`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        general_prompt: testConfig.prompt || "You are a helpful AI assistant.",
+        begin_message: testConfig.greeting_message || "Hello! How can I help you today?",
+      }),
+    });
+
+    if (!llmResponse.ok) {
+      const errorText = await llmResponse.text();
+      console.error("Failed to create test LLM:", llmResponse.status, errorText);
+      throw new Error(`Failed to create test LLM: ${llmResponse.status}`);
+    }
+
+    const llmData = await llmResponse.json();
+    console.log("Created test LLM:", llmData.llm_id);
+
     const tempAgentPayload: any = {
       agent_name: `Test Agent ${Date.now()}`,
       voice_id: testConfig.voice_id || "11labs-Adrian",
       language: testConfig.language || "en-US",
       response_engine: {
         type: "retell-llm",
-        llm_id: null, // Will use default
+        llm_id: llmData.llm_id,
       },
     };
+
+    if (testConfig.voice_temperature !== undefined) {
+      tempAgentPayload.voice_temperature = testConfig.voice_temperature;
+    }
+    if (testConfig.voice_speed !== undefined) {
+      tempAgentPayload.voice_speed = testConfig.voice_speed;
+    }
 
     // Create temp agent in Retell
     const createResponse = await fetch(`${RETELL_BASE_URL}/create-agent`, {
