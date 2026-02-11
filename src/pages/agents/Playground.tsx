@@ -32,7 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { RetellWebClient } from "retell-client-js-sdk";
 import { formatDistanceToNow } from "date-fns";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 // Voice options from AgentEdit
 const voiceOptions = [
@@ -206,11 +206,11 @@ const Playground = () => {
     if (!user) return null;
     
     try {
-      const callData = await api.post<any>("/api/retell-sync", {
-        action: "get-call",
-        agentId: callId,
+      const { data: callData, error } = await supabase.functions.invoke("retell-sync", {
+        body: { action: "get-call", agentId: callId },
       });
-      return callData.recording_url || null;
+      if (error) throw error;
+      return callData?.recording_url || null;
     } catch (error) {
       console.error("Failed to fetch recording:", error);
       return null;
@@ -228,19 +228,22 @@ const Playground = () => {
     setCallDuration(0);
 
     try {
-      const callResponse = await api.post<{ access_token: string; call_id: string }>("/api/retell-sync", {
-        action: "create-web-call",
-        agentId: selectedAgentId !== "custom" ? selectedAgentId : undefined,
-        testConfig: selectedAgentId === "custom" ? {
-          voice_id: selectedVoice,
-          language: selectedLanguage,
-          prompt: customPrompt,
-          greeting_message: greetingMessage,
-          voice_temperature: voiceTemperature,
-          voice_speed: voiceSpeed,
-        } : undefined,
+      const { data: callResponse, error: callError } = await supabase.functions.invoke("retell-sync", {
+        body: {
+          action: "create-web-call",
+          agentId: selectedAgentId !== "custom" ? selectedAgentId : undefined,
+          testConfig: selectedAgentId === "custom" ? {
+            voice_id: selectedVoice,
+            language: selectedLanguage,
+            prompt: customPrompt,
+            greeting_message: greetingMessage,
+            voice_temperature: voiceTemperature,
+            voice_speed: voiceSpeed,
+          } : undefined,
+        },
       });
 
+      if (callError) throw new Error(callError.message || "Failed to create web call");
       const { access_token, call_id } = callResponse;
       setCurrentCallId(call_id);
 
