@@ -47,7 +47,7 @@ const DEFAULT_COMMUNICATION_SETTINGS: CommunicationSettings = {
   note_destinations: ['client_notes'],
   include_transcript: true,
   include_sentiment: true,
-  note_prefix: '[VoiceHub]',
+  note_prefix: '[Kinch AI]',
 };
 
 const NOTE_DESTINATION_OPTIONS: { value: NoteDestination; label: string; description: string }[] = [
@@ -75,7 +75,7 @@ const DEFAULT_SCHEDULING_CONFIG: AgentSchedulingConfig = {
   confirmation_message: "Great! I've scheduled your service for {date} at {time}. You'll receive a confirmation shortly.",
 };
 
-const VOICEHUB_FIELDS = [
+const KINCH_FIELDS = [
   { id: 'lead_name', label: 'Lead Name' },
   { id: 'lead_phone', label: 'Phone Number' },
   { id: 'lead_email', label: 'Email' },
@@ -151,7 +151,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
 
   const addFieldMapping = () => {
     const newMapping: FieldMapping = {
-      voicehub_field: '',
+      kinch_field: '',
       crm_field_id: '',
       crm_field_name: '',
       is_required: false,
@@ -326,7 +326,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
                 <Input
                   value={localConfig.communication_settings.note_prefix}
                   onChange={(e) => handleCommunicationUpdate({ note_prefix: e.target.value })}
-                  placeholder="[VoiceHub]"
+                  placeholder="[Kinch AI]"
                 />
                 <p className="text-sm text-muted-foreground">
                   Prefix added to all notes synced to {selectedCrmConfig.name}
@@ -704,7 +704,7 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
               <Alert className="flex-1">
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  Map VoiceHub fields to {selectedCrmConfig.name} fields to ensure data is synced correctly when creating or updating customers.
+                  Map Kinch AI fields to {selectedCrmConfig.name} fields to ensure data is synced correctly when creating or updating customers.
                 </AlertDescription>
               </Alert>
               <Button 
@@ -726,14 +726,14 @@ export function AgentCrmSettings({ agentId, agentType, config, onChange }: Agent
               {localConfig.field_mapping.map((mapping, index) => (
                 <div key={index} className="flex items-center gap-4 p-3 rounded-lg border">
                   <Select
-                    value={mapping.voicehub_field}
-                    onValueChange={(value) => updateFieldMapping(index, { voicehub_field: value })}
+                    value={mapping.kinch_field}
+                    onValueChange={(value) => updateFieldMapping(index, { kinch_field: value })}
                   >
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="VoiceHub field" />
+                      <SelectValue placeholder="Kinch AI field" />
                     </SelectTrigger>
                     <SelectContent>
-                      {VOICEHUB_FIELDS.map(field => (
+                      {KINCH_FIELDS.map(field => (
                         <SelectItem key={field.id} value={field.id}>{field.label}</SelectItem>
                       ))}
                     </SelectContent>

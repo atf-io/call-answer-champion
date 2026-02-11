@@ -274,7 +274,7 @@ export default function CrmIntegrations() {
             <Webhook className="h-4 w-4" />
             <AlertTitle>CRM Event Webhooks</AlertTitle>
             <AlertDescription>
-              When events occur in your connected CRM, VoiceHub will automatically react. 
+              When events occur in your connected CRM, Kinch AI will automatically react. 
               For example, when a job is booked, the customer will be removed from any active campaigns.
             </AlertDescription>
           </Alert>
